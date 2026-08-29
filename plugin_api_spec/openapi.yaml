@@ -1,0 +1,607 @@
+openapi: 3.0.3
+info:
+  title: Semptify Plugin Interface (Semptify-PI) API
+  description: |
+    Public API surface for client-side Semptify plugins. Plugins run on the
+    tenant's own machine, authenticate with scoped bearer tokens, and call
+    Core for identity, permission, and structured data. Document bytes never
+    pass through Core: the API may return short-lived, provider-issued direct
+    URLs that the plugin uses to read or write files directly in the tenant's
+    cloud storage.
+
+    Plugin install packages are not hosted on this API. They are published as
+    GitHub Releases on the Semptify-PI repository; the directory endpoints
+    return GitHub Releases asset URLs.
+  version: 1.0.0
+  contact:
+    name: Semptify
+    url: https://semptify.org
+  license:
+    name: AGPL-3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+
+servers:
+  - url: http://127.0.0.1:9000
+    description: Local mock Core
+  - url: https://plugins.semptify.org
+    description: Proposed Semptify-PI production host (requires Brad confirmation)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/plugins:
+    get:
+      operationId: listPlugins
+      summary: List approved plugins
+      description: |
+        Returns approved plugin manifests. Public access is allowed for the
+        list; tenant-scoped fields such as token status require a session.
+      tags:
+        - directory
+      parameters:
+        - name: packaging
+          in: query
+          description: Filter by install type.
+          schema:
+            type: string
+            enum: [browser_extension, desktop_app, local_script]
+      responses:
+        "200":
+          description: List of approved plugins
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plugins]
+                properties:
+                  plugins:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PluginManifest"
+              example:
+                plugins:
+                  - plugin_id: example-document-organizer
+                    name: Document Organizer
+                    version: 1.0.0
+                    description: Sorts and labels documents in your Semptify vault.
+                    author: Semptify
+                    license: AGPL-3.0
+                    packaging: [local_script]
+                    required_scopes: [vault:read, vault:write, documents:capability]
+                    api_version: v1
+                    downloads:
+                      local_script:
+                        download_url: https://github.com/1semptify-arch/Semptify-PI/releases/download/v0.1.0/example-document-organizer.py
+                    connect:
+                      local_script_config_template: '{"core_url": "https://plugins.semptify.org", "plugin_token": "<PASTE TOKEN HERE>"}'
+                    status: approved
+
+  /api/v1/plugins/{plugin_id}:
+    get:
+      operationId: getPlugin
+      summary: Get a single plugin manifest
+      description: Returns the full manifest for a plugin.
+      tags:
+        - directory
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Plugin manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PluginManifest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/plugins/{plugin_id}/connect:
+    post:
+      operationId: connectPlugin
+      summary: Issue a scoped plugin token
+      description: |
+        Called from a tenant browser session. Core validates the session,
+        the requested packaging type, and that the plugin scopes are allowed
+        for the tenant's role. It stores a token hash and returns the raw
+        bearer token exactly once.
+      tags:
+        - tokens
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectRequest"
+            example:
+              packaging: local_script
+              label: My laptop script
+      responses:
+        "200":
+          description: Raw plugin token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenIssueResponse"
+              example:
+                token: pl_example_token_show_once
+                token_id: tok_abc123
+                plugin_id: example-document-organizer
+                scopes: [vault:read, documents:capability]
+                packaging: local_script
+                expires_at: "2027-08-29T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/plugins/tokens:
+    get:
+      operationId: listTokens
+      summary: List active plugin tokens for the tenant
+      description: Returns the tenant's active plugin tokens with metadata.
+      tags:
+        - tokens
+      responses:
+        "200":
+          description: Active tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokens]
+                properties:
+                  tokens:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PluginToken"
+
+  /api/v1/plugins/tokens/{token_id}:
+    delete:
+      operationId: revokeToken
+      summary: Revoke a plugin token
+      description: Revokes a token immediately.
+      tags:
+        - tokens
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Token revoked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/plugins/pair:
+    post:
+      operationId: pairToken
+      summary: Exchange a pairing code for a token
+      description: |
+        Used by desktop apps and local scripts. The tenant copies a short
+        one-time code from the browser into the plugin; the plugin calls this
+        endpoint to receive the real bearer token.
+      tags:
+        - tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PairRequest"
+            example:
+              pairing_code: ABCD-1234
+              plugin_id: example-document-organizer
+      responses:
+        "200":
+          description: Token exchanged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenIssueResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/plugin/me:
+    get:
+      operationId: getMe
+      summary: Current plugin context and effective scopes
+      description: |
+        Returns the plugin token's user, plugin, and the intersection of
+        token scopes and the tenant's role permissions.
+      tags:
+        - runtime
+      responses:
+        "200":
+          description: Plugin context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PluginContext"
+              example:
+                user_id: gt7x9km2pq
+                plugin_id: example-document-organizer
+                packaging: local_script
+                effective_scopes: [vault:read, documents:capability]
+                expires_at: "2027-08-29T12:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/plugin/files/{file_id}/download-url:
+    post:
+      operationId: getDownloadUrl
+      summary: Request a direct download URL
+      description: |
+        Core validates the plugin token and `vault:read` scope, then asks the
+        tenant's cloud provider for a short-lived direct download URL. The
+        plugin fetches the file directly from the provider; no bytes pass
+        through Core.
+      tags:
+        - runtime
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Direct download URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectUrlResponse"
+              example:
+                download_url: https://dl.dropboxusercontent.com/apitl/1/example
+                expires_at: "2026-08-29T13:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/plugin/files/upload-url:
+    post:
+      operationId: getUploadUrl
+      summary: Request a direct upload URL
+      description: |
+        Core validates the plugin token and `vault:write` scope, then asks the
+        tenant's cloud provider for an upload session URL. The plugin uploads
+        bytes directly to the provider.
+      tags:
+        - runtime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+            example:
+              filename: notice-2026-08-29.pdf
+              parent_folder: /Semptify5.0/Inbox
+      responses:
+        "200":
+          description: Direct upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+              example:
+                upload_url: https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable
+                completion_token: cpl_abc123
+                expires_at: "2026-08-29T13:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/plugin/files/complete:
+    post:
+      operationId: completeUpload
+      summary: Notify Core of a completed direct upload
+      description: |
+        After the plugin finishes uploading to the provider, it calls this
+        endpoint so Core can record the new file metadata in the vault index.
+        No document bytes are sent in this call.
+      tags:
+        - runtime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteUploadRequest"
+            example:
+              completion_token: cpl_abc123
+              provider_file_id: provider_12345
+              filename: notice-2026-08-29.pdf
+              size: 10240
+      responses:
+        "200":
+          description: File recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VaultFile"
+              example:
+                file_id: f_abc123
+                filename: notice-2026-08-29.pdf
+                provider_file_id: provider_12345
+                vault_path: /Semptify5.0/Inbox/notice-2026-08-29.pdf
+                size: 10240
+                recorded_at: "2026-08-29T12:30:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Plugin token (pl_...) or tenant session token.
+
+  schemas:
+    PluginManifest:
+      type: object
+      description: Plugin manifest. See plugin_api_spec/manifest.schema.json for the canonical JSON Schema.
+      required:
+        - plugin_id
+        - name
+        - version
+        - description
+        - author
+        - license
+        - packaging
+        - required_scopes
+        - api_version
+        - downloads
+        - connect
+        - status
+      properties:
+        plugin_id:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        name: { type: string }
+        version:
+          type: string
+          pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[a-zA-Z0-9.]+)?(?:\\+[a-zA-Z0-9.]+)?$"
+        description: { type: string }
+        author: { type: string }
+        license: { type: string }
+        homepage_url: { type: string, format: uri }
+        privacy_policy_url: { type: string, format: uri }
+        support_url: { type: string, format: uri }
+        packaging:
+          type: array
+          items:
+            type: string
+            enum: [browser_extension, desktop_app, local_script]
+        required_scopes:
+          type: array
+          items:
+            type: string
+            pattern: "^[a-z_]+:[a-z_]+$"
+        optional_scopes:
+          type: array
+          items:
+            type: string
+            pattern: "^[a-z_]+:[a-z_]+$"
+        api_version:
+          type: string
+          enum: [v1]
+        minimum_core_version:
+          type: string
+          pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[a-zA-Z0-9.]+)?$"
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 32
+        downloads:
+          type: object
+          properties:
+            browser_extension:
+              type: object
+              required: [download_url]
+              properties:
+                download_url: { type: string, format: uri }
+                chrome_web_store_url: { type: string, format: uri }
+                firefox_addon_url: { type: string, format: uri }
+                sideload_url: { type: string, format: uri }
+            desktop_app:
+              type: object
+              required: [download_url]
+              properties:
+                download_url: { type: string, format: uri }
+                windows: { type: string, format: uri }
+                macos: { type: string, format: uri }
+                linux: { type: string, format: uri }
+            local_script:
+              type: object
+              required: [download_url]
+              properties:
+                download_url: { type: string, format: uri }
+                python: { type: string, format: uri }
+                node: { type: string, format: uri }
+        connect:
+          type: object
+          properties:
+            browser_extension_origin: { type: string, format: uri }
+            desktop_redirect_scheme: { type: string }
+            local_script_config_template: { type: string }
+        icon_url: { type: string, format: uri }
+        status:
+          type: string
+          enum: [approved, pending, revoked]
+
+    ConnectRequest:
+      type: object
+      required: [packaging]
+      properties:
+        packaging:
+          type: string
+          enum: [browser_extension, desktop_app, local_script]
+        label:
+          type: string
+          maxLength: 128
+          description: Optional user-provided name for the token.
+
+    TokenIssueResponse:
+      type: object
+      required: [token, token_id, plugin_id, scopes, packaging]
+      properties:
+        token:
+          type: string
+          description: Raw bearer token. Shown once.
+        token_id:
+          type: string
+          description: Stable public identifier for revocation.
+        plugin_id: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        packaging:
+          type: string
+          enum: [browser_extension, desktop_app, local_script]
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    PluginToken:
+      type: object
+      required: [token_id, plugin_id, scopes, packaging, created_at, revoked]
+      properties:
+        token_id: { type: string }
+        plugin_id: { type: string }
+        label: { type: string, nullable: true }
+        scopes:
+          type: array
+          items: { type: string }
+        packaging:
+          type: string
+          enum: [browser_extension, desktop_app, local_script]
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked: { type: boolean }
+
+    PluginContext:
+      type: object
+      required: [user_id, plugin_id, packaging, effective_scopes]
+      properties:
+        user_id: { type: string }
+        plugin_id: { type: string }
+        packaging:
+          type: string
+          enum: [browser_extension, desktop_app, local_script]
+        effective_scopes:
+          type: array
+          items: { type: string }
+        expires_at: { type: string, format: date-time, nullable: true }
+
+    PairRequest:
+      type: object
+      required: [pairing_code, plugin_id]
+      properties:
+        pairing_code:
+          type: string
+          pattern: "^[A-Z0-9]{4}-[A-Z0-9]{4}$"
+        plugin_id: { type: string }
+
+    DirectUrlResponse:
+      type: object
+      required: [download_url]
+      properties:
+        download_url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+
+    UploadRequest:
+      type: object
+      required: [filename]
+      properties:
+        filename: { type: string }
+        parent_folder: { type: string }
+
+    UploadUrlResponse:
+      type: object
+      required: [upload_url, completion_token]
+      properties:
+        upload_url: { type: string, format: uri }
+        completion_token: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    CompleteUploadRequest:
+      type: object
+      required: [completion_token, provider_file_id, filename]
+      properties:
+        completion_token: { type: string }
+        provider_file_id: { type: string }
+        filename: { type: string }
+        size: { type: integer, minimum: 0, nullable: true }
+
+    VaultFile:
+      type: object
+      required: [file_id, filename, provider_file_id, vault_path, recorded_at]
+      properties:
+        file_id: { type: string }
+        filename: { type: string }
+        provider_file_id: { type: string }
+        vault_path: { type: string }
+        size: { type: integer, minimum: 0, nullable: true }
+        recorded_at: { type: string, format: date-time }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        detail: { type: string, nullable: true }
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

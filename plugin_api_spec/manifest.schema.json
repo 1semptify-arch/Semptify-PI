@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://semptify.org/schemas/plugin-manifest/v1",
+  "title": "Semptify Plugin Manifest",
+  "description": "Schema for a Semptify-PI plugin manifest. The directory endpoint returns the approved manifests. The manifest is the contract for what a plugin is, what it can do, and how to install it.",
+  "type": "object",
+  "required": [
+    "plugin_id",
+    "name",
+    "version",
+    "description",
+    "author",
+    "license",
+    "packaging",
+    "required_scopes",
+    "api_version",
+    "downloads",
+    "connect",
+    "status"
+  ],
+  "properties": {
+    "plugin_id": {
+      "type": "string",
+      "description": "URL-safe unique slug for the plugin. Used in URLs, token rows, and headers.",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "examples": ["example-document-organizer"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable plugin name.",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "version": {
+      "type": "string",
+      "description": "Plugin version in semantic-versioning form.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[a-zA-Z0-9.]+)?(?:\\+[a-zA-Z0-9.]+)?$",
+      "examples": ["1.0.0"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Plain-language description of what the plugin does.",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or publisher of the plugin.",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier.",
+      "examples": ["AGPL-3.0", "MIT"]
+    },
+    "homepage_url": {
+      "type": "string",
+      "description": "Public landing page for the plugin.",
+      "format": "uri"
+    },
+    "privacy_policy_url": {
+      "type": "string",
+      "description": "Privacy policy for the plugin.",
+      "format": "uri"
+    },
+    "support_url": {
+      "type": "string",
+      "description": "Support or issue tracker URL.",
+      "format": "uri"
+    },
+    "packaging": {
+      "type": "array",
+      "description": "Install formats this plugin offers.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["browser_extension", "desktop_app", "local_script"]
+      }
+    },
+    "required_scopes": {
+      "type": "array",
+      "description": "Endpoint scopes the plugin must have to run. Cannot include user-management or admin scopes.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_]+:[a-z_]+$",
+        "examples": ["vault:read", "documents:capability"]
+      }
+    },
+    "optional_scopes": {
+      "type": "array",
+      "description": "Additional scopes the plugin may request per install.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_]+:[a-z_]+$"
+      }
+    },
+    "api_version": {
+      "type": "string",
+      "description": "Semptify-PI API version the plugin targets.",
+      "enum": ["v1"]
+    },
+    "minimum_core_version": {
+      "type": "string",
+      "description": "Minimum Semptify Core version this plugin requires, if any.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[a-zA-Z0-9.]+)?$"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Public tags for the plugin directory.",
+      "items": {
+        "type": "string",
+        "maxLength": 32
+      },
+      "maxItems": 10
+    },
+    "downloads": {
+      "type": "object",
+      "description": "Download locations. Files are hosted as GitHub Releases attached to the Semptify-PI repo, not on Core. The API directory returns a GitHub Releases URL per packaging type.",
+      "required": [],
+      "properties": {
+        "browser_extension": {
+          "type": "object",
+          "description": "Browser extension install package.",
+          "required": ["download_url"],
+          "properties": {
+            "download_url": {
+              "type": "string",
+              "description": "GitHub Releases asset URL for the extension package.",
+              "format": "uri",
+              "pattern": "^https://github\\.com/1semptify-arch/Semptify-PI/releases/download/.+"
+            },
+            "chrome_web_store_url": { "type": "string", "format": "uri" },
+            "firefox_addon_url": { "type": "string", "format": "uri" },
+            "sideload_url": { "type": "string", "format": "uri" }
+          }
+        },
+        "desktop_app": {
+          "type": "object",
+          "description": "Desktop app install package.",
+          "required": ["download_url"],
+          "properties": {
+            "download_url": {
+              "type": "string",
+              "description": "GitHub Releases asset URL for the desktop app package.",
+              "format": "uri",
+              "pattern": "^https://github\\.com/1semptify-arch/Semptify-PI/releases/download/.+"
+            },
+            "windows": { "type": "string", "format": "uri" },
+            "macos": { "type": "string", "format": "uri" },
+            "linux": { "type": "string", "format": "uri" }
+          }
+        },
+        "local_script": {
+          "type": "object",
+          "description": "Local script package.",
+          "required": ["download_url"],
+          "properties": {
+            "download_url": {
+              "type": "string",
+              "description": "GitHub Releases asset URL for the script bundle.",
+              "format": "uri",
+              "pattern": "^https://github\\.com/1semptify-arch/Semptify-PI/releases/download/.+"
+            },
+            "python": { "type": "string", "format": "uri" },
+            "node": { "type": "string", "format": "uri" }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "connect": {
+      "type": "object",
+      "description": "Connection / pairing configuration.",
+      "properties": {
+        "browser_extension_origin": {
+          "type": "string",
+          "description": "Origin used for CORS and postMessage validation, e.g. chrome-extension://<id>.",
+          "format": "uri"
+        },
+        "desktop_redirect_scheme": {
+          "type": "string",
+          "description": "Custom URL scheme the desktop app registers for token delivery.",
+          "examples": ["semptify-plugin://"]
+        },
+        "local_script_config_template": {
+          "type": "string",
+          "description": "Human-readable template for the local script config file.",
+          "examples": ["{\"core_url\": \"https://plugins.semptify.org\", \"plugin_token\": \"<PASTE TOKEN HERE>\"}"]
+        }
+      }
+    },
+    "icon_url": {
+      "type": "string",
+      "description": "Plugin icon URL.",
+      "format": "uri"
+    },
+    "status": {
+      "type": "string",
+      "description": "Approval status in the directory.",
+      "enum": ["approved", "pending", "revoked"]
+    }
+  },
+  "additionalProperties": false
+}
