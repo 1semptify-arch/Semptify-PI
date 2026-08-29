@@ -1,0 +1,33 @@
+# Semptify-PI/apps.yaml
+# Rule: every app is standalone unless this file says otherwise.
+
+services:
+  mock_core:
+    type: fastapi
+    port: 9000
+    run: uvicorn mock_core.main:app --port 9000
+    status: standalone
+    purpose: Local test double for Semptify Core's plugin API.
+
+  local_script:
+    type: cli
+    port: null
+    run: python local_script/semptify_plugin.py --config local_script/config.json
+    status: standalone
+    purpose: Developer/power-user reference plugin.
+    depends_on: [mock_core]  # for the example run; can be swapped to live Core
+
+  desktop_app:
+    type: fastapi_or_tauri
+    port: 9001
+    run: python desktop_app/src/main.py --port 9001
+    status: standalone
+    purpose: Reference desktop plugin.
+
+  browser_extension:
+    type: browser_extension
+    port: null
+    run: npm run build   # or web-ext run
+    status: standalone
+    purpose: Reference browser extension plugin.
+    notes: Load the built extension into the browser manually for local testing.
