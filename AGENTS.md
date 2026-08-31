@@ -15,6 +15,12 @@ This repo is worked on by AI coding agents (Devin, Windsurf, Claude Code, etc.).
 9. **No paid tiers, accounts, or dark patterns.** The plugin directory is public-service positioning only.
 10. **Never commit case data or PII.** No tenant names, addresses, case numbers, or scraped personal records.
 
+## Local environment
+
+- **Local PostgreSQL 16** is available for agent/test use on `localhost:5432`. The agent database is `semptify_pi` and is independent of Semptify Core's database.
+- Set `DATABASE_URL` in `.env` (copied from `.env.example`). Use `tools/verify_postgres.py` to confirm the connection before relying on it.
+- This Postgres instance is for agent scratch work and testing only; it is not the deployed application database.
+
 ## Additional notes
 
 - `apps.yaml` is the source of truth for which services run and how.
