@@ -1,0 +1,33 @@
+repos:
+  - repo: local
+    hooks:
+      - id: py-compile
+        name: python compile check
+        entry: python -m py_compile
+        language: python
+        types: [python]
+        pass_filenames: true
+
+      - id: ruff
+        name: ruff
+        entry: ruff check
+        language: python
+        types: [python]
+        pass_filenames: true
+        require_serial: true
+
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: python
+        types: [python]
+        pass_filenames: true
+        require_serial: true
+
+      - id: pytest
+        name: pytest
+        entry: pytest tests/ -q
+        language: python
+        types: [python]
+        pass_filenames: false
+        always_run: true

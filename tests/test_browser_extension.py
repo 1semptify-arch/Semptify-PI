@@ -11,15 +11,15 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-
+from typing import Any, cast
 
 LIVE_SESSION_TOKEN = "sess_test"
 
 
-def _load_manifest() -> dict:
+def _load_manifest() -> dict[str, Any]:
     manifest_path = Path(__file__).parent.parent / "browser_extension" / "manifest.json"
     with open(manifest_path, encoding="utf-8") as f:
-        return json.load(f)
+        return cast(dict[str, Any], json.load(f))
 
 
 def test_browser_extension_manifest_exists_and_valid() -> None:

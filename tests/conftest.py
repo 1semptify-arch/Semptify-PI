@@ -1,17 +1,16 @@
 """Pytest fixtures for Semptify-PI tests."""
 from __future__ import annotations
 
-import shutil
 import socket
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 
 import httpx
+import mock_core.main as main
 import pytest
 from fastapi.testclient import TestClient
-
-import mock_core.main as main
 
 
 @pytest.fixture(autouse=True)
@@ -29,14 +28,13 @@ def client() -> TestClient:
 
 
 @pytest.fixture(scope="session")
-def live_mock_server() -> str:
+def live_mock_server() -> Generator[str, None, None]:
     """Start mock_core on a free port for tests that need a real HTTP socket."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
     sock.close()
 
-    uvicorn = shutil.which("uvicorn") or sys.executable
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "mock_core.main:app", "--port", str(port), "--host", "127.0.0.1"],
         stdout=subprocess.PIPE,

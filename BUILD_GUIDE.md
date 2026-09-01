@@ -29,7 +29,21 @@
 
 - `python -m py_compile <file>` — compile check.
 - `python tools/verify_postgres.py` — confirm Postgres connection.
-- `pytest tests/ -q` — run the local_script + mock_core test suite.
+- `pytest tests/ -q` — run the full test suite (local_script + mock_core + browser_extension).
+- `ruff check mock_core local_script tests` — lint.
+- `mypy mock_core local_script tests` — type check.
+- `pip install -e .[dev]` — install dev dependencies (pytest, ruff, mypy).
+
+### Browser extension Node tests
+
+The browser extension JS client is tested from Python via `tests/test_browser_extension.py`, which runs `browser_extension/test-node.mjs` against a live `mock_core`. To run it by hand:
+
+```powershell
+uvicorn mock_core.main:app --port 9000
+$env:CORE_URL="http://127.0.0.1:9000"
+$env:SESSION_TOKEN="sess_test"
+node browser_extension/test-node.mjs
+```
 
 ## Notes
 

@@ -7,7 +7,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 
 

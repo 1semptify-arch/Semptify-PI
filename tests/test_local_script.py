@@ -2,16 +2,13 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from fastapi.testclient import TestClient
-
-import mock_core.main as main
 from local_script.client import SemptifyPluginClient
 from local_script.config import PluginConfig
-
 
 SESSION_TOKEN = "sess_synthetic"
 
@@ -74,19 +71,19 @@ def _connect(
     assert result["plugin_id"] == plugin_id
     assert result["packaging"] == "local_script"
     assert "vault:read" in result["scopes"]
-    return result["token"]
+    return cast(str, result["token"])
 
 
 def _download_capability(
     client: TestClient, token: str, file_id: str, provider: str = "google_drive"
-) -> dict:
+) -> dict[str, Any]:
     r = client.post(
         f"/api/v1/plugin/files/{file_id}/download-url",
         params={"provider": provider},
         headers={"Authorization": f"Bearer {token}"},
     )
     r.raise_for_status()
-    return r.json()
+    return cast(dict[str, Any], r.json())
 
 
 def _upload_capability(
@@ -95,7 +92,7 @@ def _upload_capability(
     filename: str,
     parent_folder: str | None = None,
     provider: str = "google_drive",
-) -> dict:
+) -> dict[str, Any]:
     body: dict[str, str] = {"filename": filename}
     if parent_folder:
         body["parent_folder"] = parent_folder
@@ -106,7 +103,7 @@ def _upload_capability(
         json=body,
     )
     r.raise_for_status()
-    return r.json()
+    return cast(dict[str, Any], r.json())
 
 
 def test_connect_and_me(client: TestClient) -> None:

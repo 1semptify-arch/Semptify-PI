@@ -6,7 +6,7 @@ Semptify Plugin Interface prototype — client-side plugins (browser extension, 
 
 ## What this is
 
-This repo holds the reference implementation and API contract for the Semptify Plugin Interface. It is intentionally decoupled from `1semptify-arch/Semptify`:
+This repo holds the reference implementation and API contract for the Semptify Plugin Interface. It is intentionally decoupled from `1semptify-arch/Semptify` (Semptify Core):
 
 - No imports from the Semptify Core codebase.
 - No shared credentials, `SECRET_KEY`, or `DATABASE_URL` with Core.
@@ -24,13 +24,15 @@ Copy `.env.example` to `.env` and set `DATABASE_URL`. Run `python tools/verify_p
 ```
 Semptify-PI/
 ├── apps.yaml                    # Source of truth for local services
-├── pyproject.toml               # Monorepo packages + console scripts
+├── pyproject.toml               # Python packages + dev dependencies
 ├── .env.example                 # Local env template (copy to .env)
 ├── mock_core/                   # Local FastAPI test double for Semptify Core
-├── browser_extension/           # Candidate D reference plugin
-├── desktop_app/                 # Candidate E reference plugin
-├── local_script/                # Candidate F reference plugin
+├── browser_extension/           # Reference browser extension plugin
+├── local_script/                # Reference local script plugin
 ├── plugin_api_spec/             # OpenAPI + JSON Schema contract
+├── .github/workflows/ci.yml     # GitHub Actions CI
+├── .pre-commit-config.yaml      # Pre-commit hooks
+├── tests/                       # pytest suite
 ├── tools/                       # Helper scripts
 │   └── verify_postgres.py       # Check agent Postgres connection
 └── docs/
@@ -39,11 +41,10 @@ Semptify-PI/
 
 ## Status
 
-This is the initial scaffold. No app code is committed yet. The first implementation tasks will be:
-
-1. Land the `mock_core` test double.
-2. Land one reference plugin (likely `local_script`) to validate the API.
-3. Develop the remaining packaging candidates in parallel.
+- `mock_core` and `local_script` reference plugin are complete and tested.
+- `browser_extension` reference plugin is complete and tested via Node runner.
+- Provider direct-capability contract confirmed for Google Drive, Dropbox, and OneDrive.
+- Next phase (Phase 2): real Core OAuth/token implementation requires Brad sign-off.
 
 ## License
 

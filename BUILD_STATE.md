@@ -1,5 +1,38 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Build-system scaffold (CI, pre-commit, pyproject lock)
+
+### Task
+
+- **Task ID:** `pi-build-scaffold-2026-08-30`
+- **Scope:** Put a test/lint safety net in place before Phase 2 (real OAuth/token work).
+
+### What changed
+
+- `pyproject.toml`:
+  - Removed stale `desktop_app` package and `desktop-plugin` console script.
+  - Added `project.optional-dependencies.dev` with `pytest`, `ruff`, `mypy`.
+  - Added `tool.ruff` and `tool.mypy` config.
+  - Updated comment about the browser extension being a Node/ESM package.
+- `.github/workflows/ci.yml` — GitHub Actions workflow that runs compile, ruff, mypy, pytest, and the Node browser-extension tests against a live `mock_core`.
+- `.pre-commit-config.yaml` — local pre-commit hooks for ruff, mypy, compile, and pytest.
+- `BUILD_GUIDE.md` — updated verification commands.
+- `README.md` — updated repo structure and status.
+- `local_script/client.py` and `local_script/semptify_plugin.py` — fixed mypy `no-any-return` with `typing.cast`.
+- `tests/conftest.py`, `tests/test_local_script.py`, `tests/test_browser_extension.py` — fixed ruff import order and mypy return types.
+
+### Verification
+
+- `pip install -e .[dev]`: OK
+- `ruff check mock_core local_script tests`: PASS
+- `mypy mock_core local_script tests`: PASS
+- `python -m py_compile` on changed Python files: PASS
+- `pytest tests/ -q`: **15 passed**
+- Manual Node round-trip (`uvicorn` + `node browser_extension/test-node.mjs`): OK
+- Pushed to `1semptify-arch/Semptify-PI`.
+
+---
+
 ## Session — 2026-09-01 — Build browser_extension reference plugin (Phase 1)
 
 ### Task

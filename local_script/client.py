@@ -1,7 +1,7 @@
 """Semptify-PI local_script client — zero-transfer, scoped plugin token client."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -32,12 +32,12 @@ class SemptifyPluginClient:
         params = {"packaging": packaging} if packaging else None
         r = self._client.get("/api/v1/plugins", params=params)
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def get_plugin(self, plugin_id: str) -> dict[str, Any]:
         r = self._client.get(f"/api/v1/plugins/{plugin_id}")
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def connect(
         self,
@@ -56,12 +56,12 @@ class SemptifyPluginClient:
             json=body,
         )
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def me(self) -> dict[str, Any]:
         r = self._client.get("/api/v1/plugin/me", headers=self._plugin_headers())
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def download_url(self, file_id: str) -> dict[str, Any]:
         r = self._client.post(
@@ -69,7 +69,7 @@ class SemptifyPluginClient:
             headers=self._plugin_headers(),
         )
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def upload_url(
         self, filename: str, parent_folder: str | None = None
@@ -83,7 +83,7 @@ class SemptifyPluginClient:
             json=body,
         )
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def complete_upload(
         self,
@@ -105,7 +105,7 @@ class SemptifyPluginClient:
             json=body,
         )
         r.raise_for_status()
-        return r.json()
+        return cast(dict[str, Any], r.json())
 
     def close(self) -> None:
         self._client.close()

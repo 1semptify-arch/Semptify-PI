@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 
 from local_script.client import SemptifyPluginClient
 from local_script.config import DEFAULT_CONFIG_PATH, PluginConfig
@@ -187,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)
+    return cast(int, args.func(args))
 
 
 if __name__ == "__main__":
