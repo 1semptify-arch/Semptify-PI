@@ -57,7 +57,8 @@ class CoreConfig:
     onedrive_client_id: str = os.getenv("SEMPIFY_PI_ONEDRIVE_CLIENT_ID", "")
     onedrive_client_secret: str = os.getenv("SEMPIFY_PI_ONEDRIVE_CLIENT_SECRET", "")
     onedrive_redirect_uri: str = os.getenv(
-        "SEMPIFY_PI_ONEDRIVE_REDIRECT_URI", "http://127.0.0.1:9000/auth/onedrive/callback"
+        "SEMPIFY_PI_ONEDRIVE_REDIRECT_URI",
+        "http://localhost:9000/auth/onedrive/callback",
     )
 
     @classmethod

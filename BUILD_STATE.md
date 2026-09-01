@@ -21,7 +21,7 @@ Default redirect URIs (all local):
 
 - `http://127.0.0.1:9000/auth/google/callback`
 - `http://127.0.0.1:9000/auth/dropbox/callback`
-- `http://127.0.0.1:9000/auth/onedrive/callback`
+- `http://localhost:9000/auth/onedrive/callback` — **Microsoft requires `localhost`, not `127.0.0.1`.**
 
 ### Checklist
 
@@ -57,7 +57,7 @@ Default redirect URIs (all local):
 2. Go to **Microsoft Entra ID → App registrations → New registration**.
 3. Name: `Semptify-PI Core`.
 4. Supported account types: **Accounts in any organizational directory (multitenant) and personal Microsoft accounts**.
-5. Redirect URI: platform **Web**, value `http://127.0.0.1:9000/auth/onedrive/callback`.
+5. Redirect URI: platform **Web**, value `http://localhost:9000/auth/onedrive/callback`. Microsoft only accepts `http://localhost` or `https://` for local development; `http://127.0.0.1` is rejected.
 6. Register, then copy the **Application (client) ID**.
 7. Go to **Certificates & secrets → New client secret** and copy the secret **Value**.
 8. Go to **API permissions → Add a permission → Microsoft Graph → Delegated permissions** and add:
