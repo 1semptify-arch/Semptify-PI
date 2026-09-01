@@ -1,6 +1,6 @@
 # Semptify-PI Build State
 
-## Session — 2026-09-01 — Phase 2 OAuth/token plan (pending sign-off)
+## Session — 2026-09-01 — Phase 2 OAuth/token plan (approved with conditions)
 
 ### Task
 
@@ -9,19 +9,22 @@
 
 ### What changed
 
-- `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md` — full Phase 2 handoff with provider OAuth flows, token model, scoping/revocation, manifest registry scope, zero-transfer proof, and STOP triggers.
-- `BLUEPRINT.md` — Phase 2 marked as "pending sign-off" with plan-done checkbox.
+- `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md` — full Phase 2 handoff, plus the 2026-09-01 decision record:
+  - Google Drive `drive.file` approved.
+  - Dropbox `files.content.read/write` + `files.metadata.read` approved with containment test.
+  - OneDrive `Files.Read` + `Files.ReadWrite` approved with containment test and folder-of-record.
+  - Plugin token lifetime: **90 days default**; 1-year browser extension allowed only after immediate-revocation and per-file-tenant tests pass.
+- `BLUEPRINT.md` — Phase 2 marked as "approved with conditions."
 - `BUILD_STATE.md` — this entry.
 
 ### Verification
 
-- Plan reviewed against `docs/design-spec.md` and the confirmed provider-differentiated contract.
+- Decision record reviewed and incorporated into plan.
 - No implementation code written; no tests added for Phase 2.
 
 ### Next step
 
-- Brad reviews the plan in `BLUEPRINT.md` and `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md`.
-- After approval, create the implementation branch and begin Phase 2 work.
+- Create implementation branch and begin Phase 2 work, or continue with the parallel Review Desk improvements task.
 
 ---
 

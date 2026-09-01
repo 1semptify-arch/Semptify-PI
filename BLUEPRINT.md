@@ -62,19 +62,33 @@ for the agent to complete, verify, commit, and request push approval.
 - [x] Verification: `py_compile`, `pytest tests/ -q` (15 passed), manual Node
       round-trip across Google Drive/Dropbox/OneDrive.
 
-### Phase 2 — Real Core implementation (pending sign-off)
+### Phase 2 — Real Core implementation (approved with conditions)
 
 **🛑 Sign-off checkpoint: before starting.** Security-critical — real OAuth,
 real token issuance, real tenant cloud access.
 
 - [x] Plan written and stored in `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md`.
-- [ ] Brad sign-off on the plan.
+- [x] Brad sign-off on the plan — **approved with conditions** (see decision record in handoff).
 - [ ] Implement real OAuth flows for Google Drive, Dropbox, and OneDrive using
       the confirmed per-provider contract shapes.
+      - Google Drive: `drive.file`.
+      - Dropbox: `files.content.read`, `files.content.write`, `files.metadata.read`
+        with containment enforced to `/Semptify5.0/Inbox`.
+      - OneDrive: `Files.Read`, `Files.ReadWrite` with containment enforced to an
+        explicit folder-of-record.
 - [ ] Real scoped token issuance, expiry, and revocation.
+      - Default plugin-token lifetime: **90 days** for browser extension and
+        local script.
+      - 1-year extension for browser extension allowed only after immediate
+        revocation and per-file tenant validation tests pass.
 - [ ] Real plugin manifest registry (minimal, supporting only `local_script` and
       the Phase 1 plugin).
 - [ ] Prove the "Core never sees bytes" property against real provider APIs.
+- [ ] Required tests before final Phase 2 sign-off:
+      1. Dropbox containment (rejected outside `/Semptify5.0/Inbox`).
+      2. OneDrive containment (outside folder-of-record).
+      3. Token revocation (revoked token rejected on next use).
+      4. Per-file tenant validation (token cannot reach another tenant's files).
 
 **🛑 Sign-off checkpoint: before Phase 2 is marked done.** Security/privacy
 review of the real OAuth/token implementation.
