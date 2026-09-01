@@ -1,5 +1,41 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Build browser_extension reference plugin (Phase 1)
+
+### Task
+
+- **Task ID:** `septify-pi-roadmap-2026-09-01` (Phase 1)
+- **Scope:** Implement the second Semptify-PI reference plugin (`browser_extension`) against the confirmed provider-differentiated contract.
+
+### What changed
+
+- Added `browser_extension/` directory:
+  - `manifest.json` — Manifest V3 extension descriptor with storage permission and host permissions for mock/real Core.
+  - `api-client.mjs` — ES module client with `fetch` for list, get, connect, me, download-url, upload-url, complete-upload.
+  - `popup.html`, `popup.css`, `popup.mjs` — minimal extension popup UI that stores the plugin token in `chrome.storage.local` and exercises the API.
+  - `background.mjs` — service worker stub.
+  - `icon.svg` — simple extension icon.
+  - `test-node.mjs` — Node runner that round-trips the client against a Core instance for all three providers.
+  - `README` — install and security notes (plain text to avoid new `.md` files).
+- `mock_core/main.py` — added `browser_extension` packaging and downloads to the example plugin manifest.
+- `tests/conftest.py` — added a session-scoped `live_mock_server` fixture for tests that need a real HTTP socket.
+- `tests/test_browser_extension.py` — Python test that validates `manifest.json` and runs `test-node.mjs` against a live `mock_core`.
+- `BLUEPRINT.md` — no change in this session.
+
+### Verification
+
+- `python -m py_compile tests/conftest.py tests/test_browser_extension.py mock_core/main.py`: PASS
+- `pytest tests/ -v`: **15 passed** (8 local_script tests + 2 browser_extension tests + 5 parametrized provider tests)
+- Manual Node round-trip against `uvicorn mock_core.main:app --port 9000`:
+  - list, get, connect, me, download for Google Drive/Dropbox/OneDrive, upload for all three, complete — all OK.
+
+### Notes
+
+- The popup UI was not loaded in a real browser in this commit. The JS client logic is the primary surface; full browser extension load verification is deferred to a later phase with appropriate tooling.
+- No business-model language in any user-facing copy. The extension uses "Connect" and "Plugin token," not "log in" or "sign up."
+
+---
+
 ## Session — 2026-09-01 — Record Semptify-PI roadmap and begin Phase 1
 
 ### Task

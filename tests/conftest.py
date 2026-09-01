@@ -1,6 +1,13 @@
 """Pytest fixtures for Semptify-PI tests."""
 from __future__ import annotations
 
+import shutil
+import socket
+import subprocess
+import sys
+import time
+
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -19,3 +26,41 @@ def reset_mock_state() -> None:
 def client() -> TestClient:
     """Sync TestClient for the mock_core app."""
     return TestClient(main.app)
+
+
+@pytest.fixture(scope="session")
+def live_mock_server() -> str:
+    """Start mock_core on a free port for tests that need a real HTTP socket."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+
+    uvicorn = shutil.which("uvicorn") or sys.executable
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "mock_core.main:app", "--port", str(port), "--host", "127.0.0.1"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    deadline = time.monotonic() + 10
+    base_url = f"http://127.0.0.1:{port}"
+    while time.monotonic() < deadline:
+        try:
+            r = httpx.get(f"{base_url}/api/v1/plugins", timeout=0.5)
+            if r.status_code == 200:
+                break
+        except Exception:
+            time.sleep(0.1)
+    else:
+        proc.terminate()
+        raise RuntimeError("mock_core did not start for live test")
+
+    try:
+        yield base_url
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()

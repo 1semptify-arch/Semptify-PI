@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Semptify Document Organizer",
+  "version": "1.0.0",
+  "description": "Reference browser extension for the Semptify Plugin Interface. Demonstrates the provider-differentiated direct-capability contract against Semptify Core.",
+  "homepage_url": "https://semptify.org/plugins/example-document-organizer",
+  "author": "Semptify",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:9000/*",
+    "https://plugins.semptify.org/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Semptify Document Organizer"
+  },
+  "background": {
+    "service_worker": "background.mjs",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  }
+}

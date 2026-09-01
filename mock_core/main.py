@@ -43,17 +43,23 @@ MANIFESTS: dict[str, dict] = {
         "author": "Semptify",
         "license": "AGPL-3.0",
         "homepage_url": "https://semptify.org/plugins/example-document-organizer",
-        "packaging": ["local_script"],
+        "packaging": ["browser_extension", "local_script"],
         "required_scopes": ["vault:read", "vault:write", "documents:capability"],
         "optional_scopes": ["context:read"],
         "api_version": "v1",
         "downloads": {
+            "browser_extension": {
+                "download_url": "https://github.com/1semptify-arch/Semptify-PI/releases/download/v0.1.0/example-document-organizer.zip",
+                "chrome_web_store_url": "https://chromewebstore.google.com/detail/example-document-organizer",
+                "firefox_addon_url": "https://addons.mozilla.org/en-US/firefox/addon/example-document-organizer",
+            },
             "local_script": {
                 "download_url": "https://github.com/1semptify-arch/Semptify-PI/releases/download/v0.1.0/example-document-organizer.py",
                 "python": "https://github.com/1semptify-arch/Semptify-PI/releases/download/v0.1.0/example-document-organizer.py",
             }
         },
         "connect": {
+            "browser_extension_origin": "chrome-extension://example-document-organizer",
             "local_script_config_template": '{"core_url": "https://plugins.semptify.org", "plugin_token": "<PASTE TOKEN HERE>"}'
         },
         "icon_url": "https://semptify.org/static/icons/example-document-organizer.svg",

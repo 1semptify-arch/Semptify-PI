@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semptify Document Organizer</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main>
+    <h1>Semptify Document Organizer</h1>
+
+    <section id="config">
+      <label for="core-url">Core URL</label>
+      <input type="text" id="core-url" value="http://127.0.0.1:9000" />
+
+      <label for="session-token">Session token</label>
+      <input type="password" id="session-token" placeholder="paste session token" />
+
+      <button id="connect">Connect</button>
+    </section>
+
+    <section id="actions" class="hidden">
+      <p>Plugin token saved. <button id="me">Show context</button></p>
+
+      <h2>Download</h2>
+      <div class="row">
+        <input type="text" id="download-file-id" value="doc_123" />
+        <select id="download-provider">
+          <option value="google_drive">Google Drive</option>
+          <option value="dropbox">Dropbox</option>
+          <option value="onedrive">OneDrive</option>
+        </select>
+        <button id="download-url">Get capability</button>
+      </div>
+
+      <h2>Upload</h2>
+      <div class="row">
+        <input type="text" id="upload-filename" value="notice.pdf" />
+        <input type="text" id="upload-parent" value="/Semptify5.0/Inbox" />
+        <select id="upload-provider">
+          <option value="google_drive">Google Drive</option>
+          <option value="dropbox">Dropbox</option>
+          <option value="onedrive">OneDrive</option>
+        </select>
+        <button id="upload-url">Get capability</button>
+      </div>
+      <p id="upload-token" class="hidden"></p>
+      <button id="complete" class="hidden">Complete upload</button>
+    </section>
+
+    <section id="output">
+      <pre id="result">Ready. Connect the plugin first.</pre>
+    </section>
+  </main>
+
+  <script type="module" src="popup.mjs"></script>
+</body>
+</html>

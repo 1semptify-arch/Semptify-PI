@@ -1,0 +1,49 @@
+Semptify-PI reference browser extension
+========================================
+
+This is the second Semptify-PI reference plugin. It is a minimal Chrome/
+Firefox Manifest V3 extension that demonstrates the provider-differentiated
+direct-capability contract against the Semptify plugin API.
+
+What it does
+------------
+
+- Lists approved plugins and connects the example-document-organizer plugin.
+- Gets a download capability for a file from Google Drive, Dropbox, or OneDrive.
+- Gets an upload capability for a new file from the same providers.
+- Reports a completed upload to Core (metadata only — no bytes).
+
+The client logic lives in api-client.mjs and is shared by the popup and by the
+Node test runner. The popup (popup.html + popup.mjs + popup.css) is a minimal
+UI for manual testing.
+
+Install (developer mode)
+------------------------
+
+Chrome / Edge
+  1. Open chrome://extensions/.
+  2. Enable "Developer mode".
+  3. Click "Load unpacked" and select this directory.
+  4. Open the extension popup.
+  5. Enter a mock Core URL (default http://127.0.0.1:9000) and a session token.
+  6. Click Connect.
+
+Firefox
+  1. Open about:debugging.
+  2. Click "This Firefox" -> "Load Temporary Add-on".
+  3. Select manifest.json in this directory.
+  4. Open the extension popup and connect.
+
+The default Core URL points to the local mock_core. Point it at a real Core
+instance when one exists.
+
+Security notes
+--------------
+
+- The popup stores the plugin token in chrome.storage.local, not in the web
+  page. Do not commit a real token.
+- The extension never sends document bytes to Core; it only calls the
+  capability endpoints and then uses the returned URL or direct_request to
+  talk directly to the tenant's cloud provider.
+- Capability headers such as Authorization: Bearer ... are sensitive. They are
+  not logged or persisted beyond the chrome.storage.local token.

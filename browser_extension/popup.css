@@ -1,0 +1,118 @@
+/**
+ * Chronological / spatial task ordering:
+ * - Connect config at the top.
+ * - Action controls in the middle.
+ * - Output at the bottom.
+ */
+
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #2c7a7b;
+  --accent-hover: #285e61;
+  --danger: #7f1d1d;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 360px;
+  margin: 0;
+  padding: 16px;
+  font-family: var(--font);
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  color: var(--text);
+}
+
+h2 {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+label {
+  display: block;
+  margin: 12px 0 4px;
+  color: var(--muted);
+}
+
+input,
+select,
+button {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+button {
+  margin-top: 12px;
+  background: var(--accent);
+  border-color: var(--accent);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.row > * {
+  flex: 1 1 auto;
+  min-width: 80px;
+  margin-top: 0;
+}
+
+.row button {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+#output {
+  margin-top: 16px;
+}
+
+pre {
+  background: var(--panel);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 12px;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.hidden {
+  display: none !important;
+}
