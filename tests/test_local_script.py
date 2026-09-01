@@ -93,9 +93,15 @@ def test_download_url(client: TestClient) -> None:
         core_url="http://testserver", plugin_token=token, client=client
     )
     result = pi_client.download_url("doc_123")
-    assert "download_url" in result
-    assert "example-provider.invalid" in result["download_url"]
-    assert result["download_url"].startswith("https://")
+    # mock_core now simulates Google Drive: it returns a direct_request, not a bare URL.
+    assert "direct_request" in result
+    dr = result["direct_request"]
+    assert dr["endpoint"].startswith("https://www.googleapis.com/drive/v3/files/")
+    assert dr["method"] == "GET"
+    assert dr["query"]["alt"] == "media"
+    assert "Authorization" in dr["headers"]
+    assert dr["headers"]["Authorization"].startswith("Bearer ")
+    assert "expires_at" in result
 
 
 def test_upload_url_and_complete(client: TestClient) -> None:
@@ -106,9 +112,18 @@ def test_upload_url_and_complete(client: TestClient) -> None:
     upload = pi_client.upload_url(
         filename="notice.pdf", parent_folder="/Semptify5.0/Inbox"
     )
-    assert "upload_url" in upload
+    # mock_core now simulates Google Drive resumable upload session creation.
+    assert "direct_request" in upload
     assert "completion_token" in upload
-    assert "example-provider.invalid" in upload["upload_url"]
+    dr = upload["direct_request"]
+    assert dr["endpoint"] == "https://www.googleapis.com/upload/drive/v3/files"
+    assert dr["method"] == "POST"
+    assert dr["query"]["uploadType"] == "resumable"
+    assert dr["body"]["name"] == "notice.pdf"
+    assert dr["body"]["parents"] == ["/Semptify5.0/Inbox"]
+    assert "Authorization" in dr["headers"]
+    assert "Content-Type" in dr["headers"]
+    assert "expires_at" in upload
 
     completed = pi_client.complete_upload(
         completion_token=upload["completion_token"],

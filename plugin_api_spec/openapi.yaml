@@ -244,12 +244,15 @@ paths:
   /api/v1/plugin/files/{file_id}/download-url:
     post:
       operationId: getDownloadUrl
-      summary: Request a direct download URL
+      summary: Request a direct download capability
       description: |
         Core validates the plugin token and `vault:read` scope, then asks the
-        tenant's cloud provider for a short-lived direct download URL. The
-        plugin fetches the file directly from the provider; no bytes pass
-        through Core.
+        tenant's cloud provider for a short-lived direct download capability.
+        The response is either a preauthenticated `download_url` the plugin
+        can fetch directly, or a `direct_request` describing an HTTP request
+        the plugin must make itself (endpoint, method, headers, and optional
+        query/body). The plugin fetches the file directly from the provider;
+        no bytes pass through Core.
       tags:
         - runtime
       parameters:
@@ -260,14 +263,28 @@ paths:
             type: string
       responses:
         "200":
-          description: Direct download URL
+          description: Direct download URL or direct request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/DirectUrlResponse"
-              example:
-                download_url: https://dl.dropboxusercontent.com/apitl/1/example
-                expires_at: "2026-08-29T13:00:00Z"
+              examples:
+                tokenless:
+                  summary: Tokenless preauthenticated URL (Dropbox, OneDrive)
+                  value:
+                    download_url: https://dl.dropboxusercontent.com/apitl/1/example
+                    expires_at: "2026-08-29T13:00:00Z"
+                with-auth:
+                  summary: Request that needs a bearer token (Google Drive)
+                  value:
+                    direct_request:
+                      endpoint: https://www.googleapis.com/drive/v3/files/FILE_ID
+                      method: GET
+                      query:
+                        alt: media
+                      headers:
+                        Authorization: Bearer PROVIDER_ACCESS_TOKEN
+                    expires_at: "2026-08-29T13:00:00Z"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -278,10 +295,14 @@ paths:
   /api/v1/plugin/files/upload-url:
     post:
       operationId: getUploadUrl
-      summary: Request a direct upload URL
+      summary: Request a direct upload capability
       description: |
         Core validates the plugin token and `vault:write` scope, then asks the
-        tenant's cloud provider for an upload session URL. The plugin uploads
+        tenant's cloud provider for an upload capability. The response is
+        either a preauthenticated `upload_url` the plugin can PUT/POST bytes
+        to directly, or a `direct_request` describing the first HTTP request
+        the plugin must make to initiate the upload (for example, the
+        resumable session creation call for Google Drive). The plugin uploads
         bytes directly to the provider.
       tags:
         - runtime
@@ -296,15 +317,35 @@ paths:
               parent_folder: /Semptify5.0/Inbox
       responses:
         "200":
-          description: Direct upload URL
+          description: Direct upload URL or direct request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UploadUrlResponse"
-              example:
-                upload_url: https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable
-                completion_token: cpl_abc123
-                expires_at: "2026-08-29T13:00:00Z"
+              examples:
+                tokenless:
+                  summary: Tokenless preauthenticated upload URL (OneDrive)
+                  value:
+                    upload_url: https://sn3302.up.1drv.com/up/fe6987415ace7X4e1eF866337
+                    completion_token: cpl_abc123
+                    expires_at: "2026-08-29T13:00:00Z"
+                with-auth:
+                  summary: Resumable session creation request (Google Drive)
+                  value:
+                    completion_token: cpl_abc123
+                    direct_request:
+                      endpoint: https://www.googleapis.com/upload/drive/v3/files
+                      method: POST
+                      query:
+                        uploadType: resumable
+                      headers:
+                        Authorization: Bearer PROVIDER_ACCESS_TOKEN
+                        Content-Type: application/json; charset=UTF-8
+                      body:
+                        name: notice-2026-08-29.pdf
+                        parents:
+                          - /Semptify5.0/Inbox
+                    expires_at: "2026-08-29T13:00:00Z"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -528,11 +569,56 @@ components:
           pattern: "^[A-Z0-9]{4}-[A-Z0-9]{4}$"
         plugin_id: { type: string }
 
+    DirectRequest:
+      type: object
+      description: |
+        Describes an HTTP request the plugin must make itself to a cloud
+        provider. Used when the provider does not expose a tokenless direct
+        URL (for example, Google Drive requires an `Authorization` header on
+        every API call). Either this object or a bare `download_url`/
+        `upload_url` is returned, never both.
+      required: [endpoint, method, headers]
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          description: Full URL the plugin should call.
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+          description: HTTP verb.
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Headers the plugin must include, such as `Authorization`.
+        query:
+          type: object
+          additionalProperties:
+            oneOf:
+              - { type: string }
+              - { type: integer }
+          description: Optional query-string parameters.
+        body:
+          type: object
+          additionalProperties: true
+          description: Optional JSON body for the initial request.
+
     DirectUrlResponse:
       type: object
-      required: [download_url]
+      description: |
+        A direct download capability. At least one of `download_url` or
+        `direct_request` must be present.
+      anyOf:
+        - required: [download_url]
+        - required: [direct_request]
       properties:
-        download_url: { type: string, format: uri }
+        download_url:
+          type: string
+          format: uri
+          description: Preauthenticated tokenless URL the plugin can GET directly.
+        direct_request:
+          $ref: "#/components/schemas/DirectRequest"
         expires_at: { type: string, format: date-time }
 
     UploadRequest:
@@ -544,10 +630,25 @@ components:
 
     UploadUrlResponse:
       type: object
-      required: [upload_url, completion_token]
+      description: |
+        A direct upload capability. `completion_token` is always present.
+        In addition, either `upload_url` (tokenless preauthenticated URL) or
+        `direct_request` (a request the plugin must make itself, e.g. Google
+        Drive resumable session creation) is returned.
+      required: [completion_token]
+      anyOf:
+        - required: [upload_url]
+        - required: [direct_request]
       properties:
-        upload_url: { type: string, format: uri }
-        completion_token: { type: string }
+        upload_url:
+          type: string
+          format: uri
+          description: Preauthenticated tokenless URL the plugin can PUT/POST bytes to.
+        direct_request:
+          $ref: "#/components/schemas/DirectRequest"
+        completion_token:
+          type: string
+          description: Stable token the plugin passes back to `/files/complete`.
         expires_at: { type: string, format: date-time }
 
     CompleteUploadRequest:

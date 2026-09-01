@@ -442,10 +442,15 @@ The following two questions are now resolved; the rest remain open before implem
    - Build the `local_script` reference plugin first alongside the API.
    - Publish the spec for third-party use only after the reference plugin round-trips cleanly.
 
-### Remaining open
+### Resolved
 
 3. **Provider-specific direct URL support:**
-   - Google Drive does not expose a clean, tokenless direct download URL for arbitrary files. The design may need a Google-specific approach (e.g., a short-lived signed URL generated via a service-account or a one-time `alt=media` redirect). This should be validated before committing to the "Core never sees bytes" rule for Google.
+   - The API response for `download-url` and `upload-url` now supports two shapes, determined by the tenant's cloud provider:
+     - **Preauthenticated URL:** `download_url` or `upload_url` that the plugin can fetch directly with no additional auth. Dropbox (`files/get_temporary_link`) and OneDrive (`@microsoft.graph.downloadUrl` / `createUploadSession`) can return this for download and/or upload.
+     - **Direct request:** `direct_request` object with `endpoint`, `method`, `headers` (including `Authorization` when required), and optional `query`/`body`. Google Drive requires this because every `files.get?alt=media` and resumable upload session call needs a bearer token. Core can broker a scoped provider token without seeing document bytes.
+   - The client rule is: **prefer `direct_request` when present; otherwise fall back to the bare URL.** This keeps `local_script` backward-compatible with tokenless providers while supporting Google Drive's per-request-token requirement.
+
+### Remaining open
 
 4. **Plugin manifest approval workflow:**
    - Who can approve a plugin manifest? (Admin only? Community review?)
@@ -455,16 +460,7 @@ The following two questions are now resolved; the rest remain open before implem
 
 ## 11. Recommended next step
 
-If this spec is accepted, the first implementation task should be:
-
-**"Phase 1: Core plugin token + directory"**
-- Add `PluginToken` and `PluginManifest` models.
-- Add `app/core/plugin_auth.py` and the scoped `UserContext` intersection.
-- Add `GET /api/v1/plugins`, `GET /api/v1/plugins/{plugin_id}`, and `POST /api/v1/plugins/{plugin_id}/connect`.
-- Add `GET /api/v1/plugins/tokens` and `DELETE ...` for revocation.
-- Gate everything behind `Feature.PLUGIN_DIRECTORY` = `False` until tested.
-
-Phase 2 would add capability URLs for direct document read. Phase 3 would add write. Phase 4 would be the first reference plugin.
+The mock Core, OpenAPI spec, and `local_script` reference plugin now reflect the dual-shape direct-capability contract. The next task is to validate `desktop_app` and `browser_extension` packaging against the same contract, starting with whichever format exercises the Google Drive `direct_request` path most realistically. The manifest approval workflow remains a separate governance decision for later.
 
 ---
 

@@ -139,8 +139,17 @@ class PairRequest(BaseModel):
     plugin_id: str
 
 
+class DirectRequest(BaseModel):
+    endpoint: str
+    method: str
+    headers: dict[str, str]
+    query: Optional[dict[str, str | int]] = None
+    body: Optional[dict] = None
+
+
 class DirectUrlResponse(BaseModel):
-    download_url: str
+    download_url: Optional[str] = None
+    direct_request: Optional[DirectRequest] = None
     expires_at: str
 
 
@@ -150,7 +159,8 @@ class UploadRequest(BaseModel):
 
 
 class UploadUrlResponse(BaseModel):
-    upload_url: str
+    upload_url: Optional[str] = None
+    direct_request: Optional[DirectRequest] = None
     completion_token: str
     expires_at: str
 
@@ -360,29 +370,68 @@ def get_me(token: dict = Depends(require_plugin_token)):
     )
 
 
-@app.post("/api/v1/plugin/files/{file_id}/download-url")
+@app.post(
+    "/api/v1/plugin/files/{file_id}/download-url",
+    response_model=DirectUrlResponse,
+    response_model_exclude_none=True,
+)
 def get_download_url(file_id: str, token: dict = Depends(require_plugin_token)):
-    """Return a fake, short-lived direct download URL."""
+    """Return a fake Google Drive-style direct request.
+
+    Real Google Drive has no tokenless direct download URL. The plugin must
+    call `files.get?alt=media` with a scoped provider bearer token on every
+    request. Core brokers the token; the plugin makes the request directly.
+    """
     if "vault:read" not in token["scopes"] and "documents:capability" not in token["scopes"]:
         raise HTTPException(status_code=403, detail="Scope required")
 
     expires = utc_now() + timedelta(hours=4)
+    provider_token = "prv_" + secrets.token_urlsafe(32)
     return DirectUrlResponse(
-        download_url=f"https://example-provider.invalid/download/{file_id}?token={secrets.token_urlsafe(16)}",
+        direct_request=DirectRequest(
+            endpoint="https://www.googleapis.com/drive/v3/files/" + file_id,
+            method="GET",
+            query={"alt": "media"},
+            headers={"Authorization": f"Bearer {provider_token}"},
+        ),
         expires_at=iso(expires),
     )
 
 
-@app.post("/api/v1/plugin/files/upload-url")
+@app.post(
+    "/api/v1/plugin/files/upload-url",
+    response_model=UploadUrlResponse,
+    response_model_exclude_none=True,
+)
 def get_upload_url(body: UploadRequest, token: dict = Depends(require_plugin_token)):
-    """Return a fake, short-lived direct upload URL."""
+    """Return a fake Google Drive-style resumable upload request.
+
+    The plugin must first POST to the Google Drive resumable upload endpoint
+    with a scoped provider bearer token and file metadata, then PUT bytes to
+    the `Location` URL in the response, and finally call `/files/complete`
+    with the resulting provider file id.
+    """
     if "vault:write" not in token["scopes"] and "documents:capability" not in token["scopes"]:
         raise HTTPException(status_code=403, detail="Scope required")
 
     expires = utc_now() + timedelta(hours=4)
     completion = "cpl_" + secrets.token_urlsafe(12)[:16]
+    provider_token = "prv_" + secrets.token_urlsafe(32)
+    parent = body.parent_folder or "/Semptify5.0/Inbox"
     return UploadUrlResponse(
-        upload_url=f"https://example-provider.invalid/upload/{completion}?token={secrets.token_urlsafe(16)}",
+        direct_request=DirectRequest(
+            endpoint="https://www.googleapis.com/upload/drive/v3/files",
+            method="POST",
+            query={"uploadType": "resumable"},
+            headers={
+                "Authorization": f"Bearer {provider_token}",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+            body={
+                "name": body.filename,
+                "parents": [parent],
+            },
+        ),
         completion_token=completion,
         expires_at=iso(expires),
     )

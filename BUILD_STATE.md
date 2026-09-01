@@ -1,5 +1,43 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Correct direct-capability contract for Google Drive
+
+### Task
+
+- **Task ID:** `septify-pi-provider-direct-url-2026-09-01`
+- **Scope:** Validate how Google Drive, Dropbox, and OneDrive expose direct file access; update the Semptify-PI spec and `mock_core` so the contract matches reality.
+
+### What changed
+
+- `plugin_api_spec/openapi.yaml` — added `DirectRequest` schema, made `download_url`/`upload_url` optional, added `direct_request` to `DirectUrlResponse` and `UploadUrlResponse`, and updated examples/descriptions for Google Drive, Dropbox, and OneDrive.
+- `docs/design-spec.md` — moved "provider-specific direct URL support" from open questions to resolved with the dual-shape contract.
+- `mock_core/main.py` — added `DirectRequest` Pydantic model, made response models optional, changed `download-url` and `upload-url` to simulate Google Drive by default (per-request `Authorization` bearer token, resumable upload session creation).
+- `tests/test_local_script.py` — updated `test_download_url` and `test_upload_url_and_complete` to assert the new `direct_request` shape.
+- `BUILD_GUIDE.md` — no change.
+
+### Findings
+
+- **Google Drive**: No tokenless direct URL. Every `files.get?alt=media` call and resumable upload session creation requires a scoped provider bearer token. Core can broker the token; the plugin makes the request directly; bytes never touch Core.
+- **Dropbox**: `files/get_temporary_link` returns a preauthenticated tokenless download URL valid ~4h. Uploads require a bearer token on every request.
+- **OneDrive**: `@microsoft.graph.downloadUrl` is a preauthenticated tokenless download URL. `createUploadSession` returns a preauthenticated `uploadUrl` the client `PUT`s bytes to.
+
+### Contract rule
+
+- `download-url` / `upload-url` responses now return either a preauthenticated bare URL **or** a `direct_request` object with `endpoint`, `method`, `headers`, optional `query`, and optional `body`.
+- Client rule: prefer `direct_request` when present; otherwise fall back to `download_url` / `upload_url`.
+
+### Verification
+
+- `python -m py_compile mock_core/main.py local_script/*.py tests/*.py`: PASS
+- `pytest tests/ -q`: 8 passed
+- Manual CLI round-trip against `uvicorn mock_core.main:app --port 9000`:
+  - `connect example-document-organizer`: OK
+  - `download-url doc_123`: returns Google Drive-style `direct_request` with `Authorization` header
+  - `upload-url notice.pdf --parent-folder /Semptify5.0/Inbox`: returns resumable session `direct_request`
+  - `complete <completion_token> provider_abc notice.pdf --size 1024`: OK
+
+---
+
 ## Session — 2026-09-01 — Build local_script reference plugin and tests
 
 ### Task
