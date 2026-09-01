@@ -77,10 +77,11 @@ Default redirect URIs (all local):
 
 - [x] Google/Dropbox/OneDrive redirect URIs added to Core's existing app registrations.
 - [x] Decision made (2026-09-01): proceed with Core's shared credentials for now; split to PI-specific apps before Phase 5 / real users.
-- [ ] Core's shared Google client ID/secret obtained.
-- [ ] Core's shared Dropbox app key/secret obtained.
-- [ ] Core's shared OneDrive client ID/secret obtained.
-- [ ] `.env` filled in and not committed.
+- [x] Core's shared Google client ID/secret obtained.
+- [x] Core's shared Dropbox app key/secret obtained.
+- [x] Core's shared OneDrive client ID/secret obtained.
+- [x] `C:\master-repo\sources\app-semptify-pi\.env` filled in and not committed.
+- [ ] Verify PI `core/oauth.py` builds valid authorization URLs with real credentials.
 
 ---
 
