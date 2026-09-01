@@ -81,7 +81,11 @@ Default redirect URIs (all local):
 - [x] Core's shared Dropbox app key/secret obtained.
 - [x] Core's shared OneDrive client ID/secret obtained.
 - [x] `C:\master-repo\sources\app-semptify-pi\.env` filled in and not committed.
-- [ ] Verify PI `core/oauth.py` builds valid authorization URLs with real credentials.
+- [ ] Verify PI `core/oauth.py` builds valid authorization URLs with real credentials (next session).
+
+### Notes
+
+- Session closed after credential hand-off. Phase 2 real OAuth code exchange will be the first task in the next session.
 
 ---
 
