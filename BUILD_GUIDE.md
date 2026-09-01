@@ -29,7 +29,7 @@
 
 - `python -m py_compile <file>` — compile check.
 - `python tools/verify_postgres.py` — confirm Postgres connection.
-- `pytest` — run tests once a `tests/` directory exists.
+- `pytest tests/ -q` — run the local_script + mock_core test suite.
 
 ## Notes
 
