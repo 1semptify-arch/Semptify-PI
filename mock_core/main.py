@@ -375,17 +375,38 @@ def get_me(token: dict = Depends(require_plugin_token)):
     response_model=DirectUrlResponse,
     response_model_exclude_none=True,
 )
-def get_download_url(file_id: str, token: dict = Depends(require_plugin_token)):
-    """Return a fake Google Drive-style direct request.
+def get_download_url(
+    file_id: str,
+    provider: str = Query(default="google_drive", pattern="^(google_drive|dropbox|onedrive)$", include_in_schema=False),
+    token: dict = Depends(require_plugin_token),
+):
+    """Return a provider-specific direct download capability.
 
-    Real Google Drive has no tokenless direct download URL. The plugin must
-    call `files.get?alt=media` with a scoped provider bearer token on every
-    request. Core brokers the token; the plugin makes the request directly.
+    - Google Drive has no tokenless direct URL: the plugin must call
+      `files.get?alt=media` with a bearer token on every request.
+    - Dropbox `files/get_temporary_link` and OneDrive
+      `@microsoft.graph.downloadUrl` both return preauthenticated tokenless
+      URLs. This mock simulates both shapes so plugins can be tested against
+      the real contract.
     """
     if "vault:read" not in token["scopes"] and "documents:capability" not in token["scopes"]:
         raise HTTPException(status_code=403, detail="Scope required")
 
     expires = utc_now() + timedelta(hours=4)
+
+    if provider == "dropbox":
+        return DirectUrlResponse(
+            download_url=f"https://dl.dropboxusercontent.com/apitl/1/{file_id}?token={secrets.token_urlsafe(16)}",
+            expires_at=iso(expires),
+        )
+
+    if provider == "onedrive":
+        return DirectUrlResponse(
+            download_url=f"https://public-sn3302.files.1drv.com/y2pcT7OaUEExF7EHOlpTjCE55mIUoiX7H3sx1ff6I-nP35XUTBqZlnkh9FJhWb_pf9sZ7LEpEchvDznIbQig0hWBeidpwFkOqSKCwQylisarN6T0ecAeMvantizBUzM2PA1/{file_id}",
+            expires_at=iso(expires),
+        )
+
+    # google_drive default
     provider_token = "prv_" + secrets.token_urlsafe(32)
     return DirectUrlResponse(
         direct_request=DirectRequest(
@@ -403,21 +424,50 @@ def get_download_url(file_id: str, token: dict = Depends(require_plugin_token)):
     response_model=UploadUrlResponse,
     response_model_exclude_none=True,
 )
-def get_upload_url(body: UploadRequest, token: dict = Depends(require_plugin_token)):
-    """Return a fake Google Drive-style resumable upload request.
+def get_upload_url(
+    body: UploadRequest,
+    provider: str = Query(default="google_drive", pattern="^(google_drive|dropbox|onedrive)$", include_in_schema=False),
+    token: dict = Depends(require_plugin_token),
+):
+    """Return a provider-specific direct upload capability.
 
-    The plugin must first POST to the Google Drive resumable upload endpoint
-    with a scoped provider bearer token and file metadata, then PUT bytes to
-    the `Location` URL in the response, and finally call `/files/complete`
-    with the resulting provider file id.
+    - OneDrive `createUploadSession` returns a preauthenticated `uploadUrl`.
+    - Dropbox uploads require `Authorization: Bearer <token>` on every call.
+    - Google Drive resumable uploads require an authenticated `POST` to start
+      the session; the plugin then follows the `Location` header.
     """
     if "vault:write" not in token["scopes"] and "documents:capability" not in token["scopes"]:
         raise HTTPException(status_code=403, detail="Scope required")
 
     expires = utc_now() + timedelta(hours=4)
     completion = "cpl_" + secrets.token_urlsafe(12)[:16]
-    provider_token = "prv_" + secrets.token_urlsafe(32)
     parent = body.parent_folder or "/Semptify5.0/Inbox"
+
+    if provider == "dropbox":
+        provider_token = "prv_" + secrets.token_urlsafe(32)
+        return UploadUrlResponse(
+            direct_request=DirectRequest(
+                endpoint="https://content.dropboxapi.com/2/files/upload",
+                method="POST",
+                headers={
+                    "Authorization": f"Bearer {provider_token}",
+                    "Content-Type": "application/octet-stream",
+                    "Dropbox-API-Arg": f'{{"path": "{parent}/{body.filename}", "mode": "add", "autorename": true}}',
+                },
+            ),
+            completion_token=completion,
+            expires_at=iso(expires),
+        )
+
+    if provider == "onedrive":
+        return UploadUrlResponse(
+            upload_url=f"https://sn3302.up.1drv.com/up/{completion}",
+            completion_token=completion,
+            expires_at=iso(expires),
+        )
+
+    # google_drive default
+    provider_token = "prv_" + secrets.token_urlsafe(32)
     return UploadUrlResponse(
         direct_request=DirectRequest(
             endpoint="https://www.googleapis.com/upload/drive/v3/files",

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 import mock_core.main as main
@@ -76,6 +77,38 @@ def _connect(
     return result["token"]
 
 
+def _download_capability(
+    client: TestClient, token: str, file_id: str, provider: str = "google_drive"
+) -> dict:
+    r = client.post(
+        f"/api/v1/plugin/files/{file_id}/download-url",
+        params={"provider": provider},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def _upload_capability(
+    client: TestClient,
+    token: str,
+    filename: str,
+    parent_folder: str | None = None,
+    provider: str = "google_drive",
+) -> dict:
+    body: dict[str, str] = {"filename": filename}
+    if parent_folder:
+        body["parent_folder"] = parent_folder
+    r = client.post(
+        "/api/v1/plugin/files/upload-url",
+        params={"provider": provider},
+        headers={"Authorization": f"Bearer {token}"},
+        json=body,
+    )
+    r.raise_for_status()
+    return r.json()
+
+
 def test_connect_and_me(client: TestClient) -> None:
     token = _connect(client)
     pi_client = SemptifyPluginClient(
@@ -87,45 +120,69 @@ def test_connect_and_me(client: TestClient) -> None:
     assert "vault:read" in me["effective_scopes"]
 
 
-def test_download_url(client: TestClient) -> None:
+@pytest.mark.parametrize("provider", ["google_drive", "dropbox", "onedrive"])
+def test_download_url_by_provider(client: TestClient, provider: str) -> None:
     token = _connect(client)
-    pi_client = SemptifyPluginClient(
-        core_url="http://testserver", plugin_token=token, client=client
-    )
-    result = pi_client.download_url("doc_123")
-    # mock_core now simulates Google Drive: it returns a direct_request, not a bare URL.
-    assert "direct_request" in result
-    dr = result["direct_request"]
-    assert dr["endpoint"].startswith("https://www.googleapis.com/drive/v3/files/")
-    assert dr["method"] == "GET"
-    assert dr["query"]["alt"] == "media"
-    assert "Authorization" in dr["headers"]
-    assert dr["headers"]["Authorization"].startswith("Bearer ")
+    result = _download_capability(client, token, "doc_123", provider=provider)
     assert "expires_at" in result
 
+    if provider == "google_drive":
+        assert "direct_request" in result
+        assert "download_url" not in result
+        dr = result["direct_request"]
+        assert dr["endpoint"].startswith("https://www.googleapis.com/drive/v3/files/")
+        assert dr["method"] == "GET"
+        assert dr["query"]["alt"] == "media"
+        assert dr["headers"]["Authorization"].startswith("Bearer ")
+    else:
+        assert "download_url" in result
+        assert "direct_request" not in result
+        if provider == "dropbox":
+            assert "dl.dropboxusercontent.com" in result["download_url"]
+        else:
+            assert "1drv.com" in result["download_url"]
 
-def test_upload_url_and_complete(client: TestClient) -> None:
+
+@pytest.mark.parametrize("provider", ["google_drive", "dropbox", "onedrive"])
+def test_upload_url_by_provider(client: TestClient, provider: str) -> None:
     token = _connect(client)
-    pi_client = SemptifyPluginClient(
-        core_url="http://testserver", plugin_token=token, client=client
+    upload = _upload_capability(
+        client, token, "notice.pdf", parent_folder="/Semptify5.0/Inbox", provider=provider
     )
-    upload = pi_client.upload_url(
-        filename="notice.pdf", parent_folder="/Semptify5.0/Inbox"
-    )
-    # mock_core now simulates Google Drive resumable upload session creation.
-    assert "direct_request" in upload
     assert "completion_token" in upload
-    dr = upload["direct_request"]
-    assert dr["endpoint"] == "https://www.googleapis.com/upload/drive/v3/files"
-    assert dr["method"] == "POST"
-    assert dr["query"]["uploadType"] == "resumable"
-    assert dr["body"]["name"] == "notice.pdf"
-    assert dr["body"]["parents"] == ["/Semptify5.0/Inbox"]
-    assert "Authorization" in dr["headers"]
-    assert "Content-Type" in dr["headers"]
     assert "expires_at" in upload
 
-    completed = pi_client.complete_upload(
+    if provider == "google_drive":
+        assert "direct_request" in upload
+        assert "upload_url" not in upload
+        dr = upload["direct_request"]
+        assert dr["endpoint"] == "https://www.googleapis.com/upload/drive/v3/files"
+        assert dr["method"] == "POST"
+        assert dr["query"]["uploadType"] == "resumable"
+        assert dr["body"]["name"] == "notice.pdf"
+        assert dr["body"]["parents"] == ["/Semptify5.0/Inbox"]
+        assert "Authorization" in dr["headers"]
+        assert "Content-Type" in dr["headers"]
+    elif provider == "dropbox":
+        assert "direct_request" in upload
+        assert "upload_url" not in upload
+        dr = upload["direct_request"]
+        assert dr["endpoint"] == "https://content.dropboxapi.com/2/files/upload"
+        assert dr["method"] == "POST"
+        assert "Authorization" in dr["headers"]
+        assert "Dropbox-API-Arg" in dr["headers"]
+    else:
+        assert "upload_url" in upload
+        assert "direct_request" not in upload
+        assert "1drv.com" in upload["upload_url"]
+
+
+def test_complete_upload(client: TestClient) -> None:
+    token = _connect(client)
+    upload = _upload_capability(client, token, "notice.pdf", parent_folder="/Semptify5.0/Inbox")
+    completed = SemptifyPluginClient(
+        core_url="http://testserver", plugin_token=token, client=client
+    ).complete_upload(
         completion_token=upload["completion_token"],
         provider_file_id="provider_abc",
         filename="notice.pdf",

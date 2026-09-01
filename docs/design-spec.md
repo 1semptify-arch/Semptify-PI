@@ -291,7 +291,7 @@ A plugin must declare what it is, what it can do, and how to install it. The man
 
 ## 6. Zero-transfer document access
 
-This is the most important change from the earlier research report. Core does **not** read document bytes and pass them to the plugin. Instead, Core acts as a permission authority and returns a short-lived, provider-generated direct URL that the plugin uses to fetch or upload the document directly.
+This is the most important change from the earlier research report. Core does **not** read document bytes and pass them to the plugin. Core acts as a permission authority and returns either a short-lived, preauthenticated direct URL or a `direct_request` the plugin uses to call the provider itself. In both cases, bytes move only between the plugin and the tenant's cloud provider.
 
 ### 6.1 Read flow
 
@@ -305,50 +305,60 @@ Plugin                          Core                       Provider
   |                              | 2. Check scope "vault:read"  |
   |                              | 3. Load tenant's encrypted   |
   |                              |    OAuth token from sessions |
-  |                              | 4. Ask provider for a short- |
-  |                              |    lived download URL        |
-  |                              |---------------------------->|
-  |                              |<----------------------------|
-  |                              | (provider returns direct URL)|
-  |<-----------------------------| return { "download_url": ...}|
+  |                              | 4. Ask provider for a direct |
+  |                              |    capability (URL or request|
+  |<-----------------------------| return {download_url} or     |
+  |    download_url / direct_req |     {direct_request}         |
   |                              |                            |
-  | GET <download_url>           |                            |
+  | GET <download_url>  OR       |                            |
+  | GET/POST as directed         |                            |
   |----------------------------------------------------------->|
   | (document bytes flow directly between provider and plugin) |
 ```
 
-**Provider-specific examples:**
-- **Dropbox:** `files/get_temporary_link` returns a direct URL valid for a few hours.
-- **OneDrive:** `DriveItem` has a short-lived `@microsoft.graph.downloadUrl`.
-- **Google Drive:** `files.get` with `fields=webContentLink` or the `downloadUrl` in export responses. For raw binary, `alt=media` returns bytes, so for a true zero-transfer design we should prefer provider-generated temporary links where available, or accept that Google may require a short-lived signed URL generated server-side. If no provider direct URL is available, this is a gap to flag.
+### 6.2 Provider-specific read behavior
 
-**Key invariant:** The provider access token never leaves Core. The plugin receives only a time-limited URL.
+| Provider | Core can obtain a preauthenticated, tokenless URL? | What the plugin receives |
+|----------|---------------------------------------------------|--------------------------|
+| **Dropbox** | Yes — `files/get_temporary_link` returns a direct link valid ~4 hours. | `download_url` |
+| **OneDrive** | Yes — `GET /drive/items/{id}?select=@microsoft.graph.downloadUrl` returns a preauthenticated URL. | `download_url` |
+| **Google Drive** | No — binary content requires `files.get?alt=media` with a bearer token on every request. | `direct_request` with `Authorization: Bearer <scoped_provider_token>` and `alt=media` query. |
 
-### 6.2 Write flow
+### 6.3 Write flow
 
-Writing is more provider-specific, but the same zero-transfer principle applies:
+The same zero-transfer principle applies, but the response shape varies by provider:
 
 1. Plugin requests `POST /api/v1/plugin/files/upload-url` with a proposed filename and parent folder.
 2. Core validates the plugin token and `vault:write` scope.
-3. Core asks the provider to create an upload session and returns:
-   - a `upload_url` for the plugin to `PUT` / `POST` the bytes to,
-   - and a `completion_token` for the plugin to report the result.
+3. Core asks the provider for an upload capability and returns:
+   - an `upload_url` if the provider gives a preauthenticated URL the plugin can PUT/POST to directly, **or**
+   - a `direct_request` describing the HTTP request the plugin must make to start the upload (for example, Google Drive resumable session creation),
+   - plus a `completion_token` for the plugin to report the result.
 4. Plugin uploads bytes directly to the provider.
 5. Plugin calls `POST /api/v1/plugin/files/complete` with the `completion_token` and provider file metadata.
 6. Core records the new file in the tenant's vault index (metadata only — no bytes stored on Core).
 
-For a first implementation, **read** should be built before **write**. Write can be marked as a Phase 2 extension in the spec.
+### 6.4 Provider-specific write behavior
 
-### 6.3 Capability token for direct URLs (optional but cleaner)
+| Provider | Preauthenticated, tokenless upload URL? | What the plugin receives |
+|----------|----------------------------------------|--------------------------|
+| **Dropbox** | No — upload (`files/upload` or upload-session) requires `Authorization: Bearer <token>` on every call. | `direct_request` with endpoint, `Authorization`, and `Dropbox-API-Arg` header. |
+| **OneDrive** | Yes — `createUploadSession` returns an `uploadUrl` the plugin PUTs bytes to without additional auth. | `upload_url` |
+| **Google Drive** | No — resumable upload session creation requires `Authorization: Bearer <token>`; the `Location` response then gives the actual upload URL. | `direct_request` for the resumable session `POST`; the plugin follows the `Location` header. |
 
-Instead of reusing the plugin token for every capability request, Core can issue a short-lived **capability token** (`app/core/security.py` `issue_function_access_token()` is a useful pattern here). The flow would be:
+### 6.5 Client rule
 
-1. Plugin asks for a direct URL using its long-lived plugin token.
-2. Core validates and issues a 5-minute capability token scoped to that specific file and action (`read` or `write`).
-3. The plugin includes the capability token in the `X-Semptify-Capability` header when it uses the direct URL.
-4. Core validates the capability token before the provider call.
+The plugin must handle both response shapes:
 
-This adds a layer of defense in depth but is optional. It is noted as a future hardening step, not a first-phase requirement.
+- If `direct_request` is present, use it (`endpoint`, `method`, `headers`, optional `query` and `body`).
+- If only `download_url` or `upload_url` is present, use that URL directly.
+- Never send both shapes.
+
+### 6.6 Key invariants
+
+- **Document bytes never pass through Core.** Core may broker a short-lived provider token or preauthenticated URL, but it does not proxy the file content.
+- **Provider tokens are scoped and short-lived.** Where Core hands a token to the plugin, it is a file- or action-scoped token, not the tenant's long-lived OAuth grant.
+- **The plugin runs on the tenant's machine.** It is the only party that handles document bytes.
 
 ---
 

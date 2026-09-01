@@ -1,5 +1,46 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Confirm Dropbox and OneDrive direct-capability shapes
+
+### Task
+
+- **Task ID:** `septify-pi-provider-direct-url-2026-09-01` (continued)
+- **Scope:** Answer the two follow-up questions in the hand-off: confirm Dropbox/OneDrive behavior and prove the contract is provider-differentiated, not Google-Drive-only.
+
+### What changed
+
+- `docs/design-spec.md` — rewrote section 6 "Zero-transfer document access" with provider-specific read/write tables and the dual-shape client rule.
+- `mock_core/main.py` — added a test-only `provider` query parameter to `download-url` and `upload-url` (default `google_drive`, hidden from OpenAPI) and implemented `dropbox` and `onedrive` response shapes alongside the existing `google_drive` direct_request.
+- `tests/test_local_script.py` — added `pytest.mark.parametrize` to `test_download_url_by_provider` and `test_upload_url_by_provider`, covering all three providers.
+
+### Answers to the hand-off questions
+
+1. **Dropbox and OneDrive confirmed.**
+   - **Dropbox download:** `files/get_temporary_link` returns a preauthenticated tokenless URL.
+   - **Dropbox upload:** `files/upload` requires `Authorization: Bearer <token>` and a `Dropbox-API-Arg` header — no tokenless upload URL.
+   - **OneDrive download:** `@microsoft.graph.downloadUrl` is a preauthenticated tokenless URL.
+   - **OneDrive upload:** `createUploadSession` returns a preauthenticated `uploadUrl` the client PUTs bytes to.
+
+2. **The contract is provider-differentiated, not Google-Drive-only.**
+   - `download-url` and `upload-url` each return either a preauthenticated bare URL (`download_url`/`upload_url`) **or** a `direct_request` describing the HTTP call the plugin must make itself.
+   - Client rule: prefer `direct_request` if present; otherwise use the bare URL.
+
+### Provider response matrix
+
+| Provider | Read shape | Write shape |
+|----------|------------|-------------|
+| Google Drive | `direct_request` (GET `files.get?alt=media` with `Authorization`) | `direct_request` (POST resumable session with `Authorization`) |
+| Dropbox | `download_url` (tokenless temporary link) | `direct_request` (POST `files/upload` with `Authorization` + `Dropbox-API-Arg`) |
+| OneDrive | `download_url` (tokenless `@microsoft.graph.downloadUrl`) | `upload_url` (tokenless resumable `uploadUrl`) |
+
+### Verification
+
+- `python -m py_compile mock_core/main.py tests/test_local_script.py`: PASS
+- `pytest tests/ -v`: **13 passed**
+- Manual CLI round-trip against `uvicorn mock_core.main:app --port 9000` with default `google_drive`: connect, download-url, upload-url, complete-upload all OK.
+
+---
+
 ## Session — 2026-09-01 — Correct direct-capability contract for Google Drive
 
 ### Task
