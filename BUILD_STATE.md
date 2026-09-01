@@ -1,5 +1,38 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Record Semptify-PI roadmap and begin Phase 1
+
+### Task
+
+- **Task ID:** `septify-pi-roadmap-2026-09-01`
+- **Scope:** Phase 0: update `BLUEPRINT.md` and `BUILD_STATE.md` with current status and the Roadmap to Live on Render. Phase 1: build the `browser_extension` reference plugin.
+
+### What changed
+
+- `BLUEPRINT.md` — rewritten to reflect current status and the phased roadmap. Explicitly scoped to Semptify-PI only; Core Preamble and public `semptify.org` pages are out of scope.
+- `BUILD_STATE.md` — this entry.
+
+### Roadmap summary
+
+| Phase | Work | Sign-off needed |
+|-------|------|-----------------|
+| 0 | Record roadmap and status | No |
+| 1 | `browser_extension` reference plugin | No |
+| 2 | Real Core OAuth/token implementation | Yes (before start and before close) |
+| 3 | Provider OAuth app registration (Brad-only) | N/A — Brad action |
+| 4 | Public plugin directory / explainer | Yes (final copy) |
+| 5 | Render deployment | No |
+| 6 | Go-live verification | Yes (final go/no-go) |
+
+### Verification
+
+- `BLUEPRINT.md` is scoped to PI and references the confirmed provider-differentiated contract.
+- `BUILD_STATE.md` reflects the roadmap and the start of Phase 1.
+
+---
+
+# Semptify-PI Build State
+
 ## Session — 2026-09-01 — Confirm Dropbox and OneDrive direct-capability shapes
 
 ### Task
