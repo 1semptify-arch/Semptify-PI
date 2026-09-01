@@ -62,33 +62,19 @@ for the agent to complete, verify, commit, and request push approval.
 - [x] Verification: `py_compile`, `pytest tests/ -q` (15 passed), manual Node
       round-trip across Google Drive/Dropbox/OneDrive.
 
-### Phase 2 — Real Core implementation (next)
-
-**No sign-off needed.** This is the second reference plugin. It follows the
-same pattern as `local_script` and proves the provider-differentiated contract
-in a browser context.
-
-- Implement `browser_extension/` package:
-  - Config loading (browser storage or content script context).
-  - Client that calls the Semptify-PI endpoints.
-  - Minimal entry point/background script that demonstrates list, connect,
-    me, download-url, upload-url, and complete-upload.
-- Add tests under `tests/` that exercise it against `mock_core` for all three
-  provider shapes.
-- Verification: `python -m py_compile`, `pytest tests/ -q`, manual round-trip
-  against `mock_core`.
-
-### Phase 2 — Real Core implementation
+### Phase 2 — Real Core implementation (pending sign-off)
 
 **🛑 Sign-off checkpoint: before starting.** Security-critical — real OAuth,
 real token issuance, real tenant cloud access.
 
-- Design and implement real OAuth flows for Google Drive, Dropbox, and OneDrive
-  using the confirmed per-provider contract shapes.
-- Real scoped token issuance, expiry, and revocation.
-- Real plugin manifest registry (minimal, supporting only `local_script` and
-  the Phase 1 plugin).
-- Prove the "Core never sees bytes" property against real provider APIs.
+- [x] Plan written and stored in `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md`.
+- [ ] Brad sign-off on the plan.
+- [ ] Implement real OAuth flows for Google Drive, Dropbox, and OneDrive using
+      the confirmed per-provider contract shapes.
+- [ ] Real scoped token issuance, expiry, and revocation.
+- [ ] Real plugin manifest registry (minimal, supporting only `local_script` and
+      the Phase 1 plugin).
+- [ ] Prove the "Core never sees bytes" property against real provider APIs.
 
 **🛑 Sign-off checkpoint: before Phase 2 is marked done.** Security/privacy
 review of the real OAuth/token implementation.

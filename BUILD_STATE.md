@@ -1,5 +1,32 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Phase 2 OAuth/token plan (pending sign-off)
+
+### Task
+
+- **Task ID:** `pi-phase-2-oauth-plan-2026-09-01`
+- **Scope:** Write the Phase 2 design plan for real Core OAuth, token scoping, and the minimal plugin manifest registry. Stop at the plan; do not implement until Brad signs off.
+
+### What changed
+
+- `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md` — full Phase 2 handoff with provider OAuth flows, token model, scoping/revocation, manifest registry scope, zero-transfer proof, and STOP triggers.
+- `BLUEPRINT.md` — Phase 2 marked as "pending sign-off" with plan-done checkbox.
+- `BUILD_STATE.md` — this entry.
+
+### Verification
+
+- Plan reviewed against `docs/design-spec.md` and the confirmed provider-differentiated contract.
+- No implementation code written; no tests added for Phase 2.
+
+### Next step
+
+- Brad reviews the plan in `BLUEPRINT.md` and `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md`.
+- After approval, create the implementation branch and begin Phase 2 work.
+
+---
+
+# Semptify-PI Build State
+
 ## Session — 2026-09-01 — Build-system scaffold (CI, pre-commit, pyproject lock)
 
 ### Task
