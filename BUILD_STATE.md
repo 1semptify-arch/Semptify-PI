@@ -75,6 +75,7 @@ Default redirect URIs (all local):
 
 ### Status
 
+- [x] Google/Dropbox/OneDrive redirect URIs added.
 - [ ] Google client ID/secret obtained.
 - [ ] Dropbox app key/secret obtained.
 - [ ] OneDrive client ID/secret obtained.
