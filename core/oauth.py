@@ -1,15 +1,50 @@
 """OAuth flow helpers and provider token storage.
 
-This module provides the start/callback URL builders and encrypted refresh-token
-storage. It does not perform real HTTP calls in Phase 2; the actual code
-exchange happens in Phase 3 once Brad has registered provider applications.
+This module builds provider authorization URLs, exchanges authorization codes for
+refresh/access tokens, and encrypts long-lived refresh tokens before they are
+stored in the Core database.
+
+Core never sees document bytes. The only bytes Core handles here are OAuth
+tokens and short-lived provider metadata.
 """
 from __future__ import annotations
 
+import base64
+import json
+import os
+import secrets
 import urllib.parse
 from dataclasses import dataclass
+from typing import Any, cast
+
+import httpx
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from core.config import CoreConfig
+
+
+def _derive_fernet_key(secret: str, salt: bytes = b"semptify-pi-oauth-v1") -> bytes:
+    """Return a 32-byte base64-encoded Fernet key.
+
+    If the secret is already a valid Fernet key, use it as-is. Otherwise derive
+    one using PBKDF2 so plain-password-style secrets still work.
+    """
+    try:
+        decoded = base64.urlsafe_b64decode(secret.encode("utf-8"))
+        if len(decoded) == 32:
+            return secret.encode("utf-8")
+    except Exception:
+        pass
+
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100_000,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(secret.encode("utf-8")))
 
 
 @dataclass
@@ -23,8 +58,54 @@ class OAuthProviderConfig:
     redirect_uri: str
 
 
+class TokenCrypto:
+    """Encrypt/decrypt provider refresh tokens and OAuth state tokens."""
+
+    def __init__(self, config: CoreConfig | None = None) -> None:
+        self.config = config or CoreConfig.from_env()
+        # Read the key at runtime so .env can be loaded after this module is
+        # first imported (e.g. in tests that monkeypatch the env before import).
+        secret = os.environ.get(
+            "SEMPIFY_PI_ENCRYPTION_KEY", self.config.encryption_key
+        )
+        if not secret:
+            raise RuntimeError(
+                "SEMPIFY_PI_ENCRYPTION_KEY is not configured. "
+                "Add it to .env (gitignored) or the host environment."
+            )
+        self._fernet = Fernet(_derive_fernet_key(secret))
+
+    def encrypt(self, plaintext: str) -> str:
+        return self._fernet.encrypt(plaintext.encode("utf-8")).decode("utf-8")
+
+    def decrypt(self, ciphertext: str) -> str:
+        return self._fernet.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
+
+    def create_state(
+        self,
+        tenant_id: str,
+        provider: str,
+        scopes: list[str] | None = None,
+    ) -> str:
+        payload = json.dumps(
+            {
+                "tenant_id": tenant_id,
+                "provider": provider,
+                "scopes": scopes or [],
+                "nonce": secrets.token_urlsafe(16),
+            }
+        )
+        return self.encrypt(payload)
+
+    def verify_state(self, state: str) -> dict[str, Any]:
+        try:
+            return cast(dict[str, Any], json.loads(self.decrypt(state)))
+        except Exception as exc:
+            raise ValueError("invalid or tampered OAuth state") from exc
+
+
 class OAuthManager:
-    """Builds OAuth URLs and stores encrypted provider refresh tokens."""
+    """Builds OAuth URLs, exchanges codes, and encrypts provider tokens."""
 
     def __init__(self, config: CoreConfig | None = None) -> None:
         self.config = config or CoreConfig.from_env()
@@ -57,14 +138,28 @@ class OAuthManager:
         if provider == "onedrive":
             return OAuthProviderConfig(
                 name="onedrive",
-                authorization_base="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+                authorization_base=(
+                    "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+                ),
                 token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                scopes=["Files.Read", "Files.ReadWrite", "User.Read"],
+                scopes=[
+                    "Files.Read",
+                    "Files.ReadWrite",
+                    "User.Read",
+                    "offline_access",
+                ],
                 client_id=self.config.onedrive_client_id,
                 client_secret=self.config.onedrive_client_secret,
                 redirect_uri=self.config.onedrive_redirect_uri,
             )
         raise ValueError(f"unsupported provider: {provider}")
+
+    @property
+    def crypto(self) -> TokenCrypto:
+        return TokenCrypto(self.config)
+
+    def provider_scopes(self, provider: str) -> list[str]:
+        return list(self._provider_config(provider).scopes)
 
     def get_authorization_url(self, provider: str, state: str) -> str:
         """Return the URL to send the tenant to for provider consent."""
@@ -72,30 +167,56 @@ class OAuthManager:
         if not cfg.client_id:
             raise RuntimeError(f"{provider} client_id is not configured")
 
-        params = {
+        params: dict[str, str] = {
             "client_id": cfg.client_id,
             "redirect_uri": cfg.redirect_uri,
             "response_type": "code",
             "scope": " ".join(cfg.scopes),
             "state": state,
-            "access_type": "offline",
-            "prompt": "consent",
         }
 
-        # Microsoft and Dropbox expect space-separated scopes too; Google uses +.
-        # We keep a single string for all of them.
         if provider == "google_drive":
-            params["scope"] = " ".join(cfg.scopes)
+            # Offline access and forced consent guarantee we get a refresh token.
+            params["access_type"] = "offline"
+            params["prompt"] = "consent"
             params["include_granted_scopes"] = "false"
+        elif provider == "dropbox":
+            # Dropbox uses token_access_type to request a refresh token.
+            params["token_access_type"] = "offline"
+        elif provider == "onedrive":
+            params["response_mode"] = "query"
+            params["prompt"] = "consent"
 
-        return f"{cfg.authorization_base}?{urllib.parse.urlencode(params)}"
+        # Use percent-encoding for spaces (%20) rather than '+' so all three
+        # providers see a single space-delimited scope string.
+        query = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+        return f"{cfg.authorization_base}?{query}"
 
-    def exchange_code(self, provider: str, code: str) -> None:
-        """Placeholder for Phase 3: exchange auth code for refresh/access token.
+    async def exchange_code(self, provider: str, code: str) -> dict[str, Any]:
+        """Exchange an OAuth authorization code for tokens.
 
-        This is intentionally not implemented without real credentials. The
-        interface is committed now so the UI and tests can be written against it.
+        Returns the provider's token response as a dict. Callers are responsible
+        for storing the refresh token encrypted and discarding the access token
+        when it expires.
         """
-        raise NotImplementedError(
-            "Provider code exchange requires real credentials (Phase 3)."
-        )
+        cfg = self._provider_config(provider)
+        if not cfg.client_id or not cfg.client_secret:
+            raise RuntimeError(f"{provider} OAuth credentials are not configured")
+
+        data = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "client_id": cfg.client_id,
+            "client_secret": cfg.client_secret,
+            "redirect_uri": cfg.redirect_uri,
+        }
+
+        # Microsoft requires the scope repeated on the token request; the other
+        # providers accept or ignore it.
+        if provider == "onedrive":
+            data["scope"] = " ".join(cfg.scopes)
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(cfg.token_url, data=data)
+            response.raise_for_status()
+            return cast(dict[str, Any], response.json())

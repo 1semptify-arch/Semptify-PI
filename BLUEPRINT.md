@@ -69,21 +69,25 @@ real token issuance, real tenant cloud access.
 
 - [x] Plan written and stored in `C:\master-repo\handoffs\pi-phase-2-core-oauth-2026-09-01.md`.
 - [x] Brad sign-off on the plan — **approved with conditions** (see decision record in handoff).
-- [ ] Implement real OAuth flows for Google Drive, Dropbox, and OneDrive using
+- [x] Implement real OAuth flows for Google Drive, Dropbox, and OneDrive using
       the confirmed per-provider contract shapes.
       - `core/oauth.py` provides authorization-URL builders for all three.
-      - Code exchange not yet implemented (requires Phase 3 credentials).
+      - Code exchange implemented in `core/oauth.py::exchange_code`.
+      - Callback endpoints (`/auth/{provider}/start`, `/auth/{provider}/callback`) added.
       - Google Drive: `drive.file`.
       - Dropbox: `files.content.read`, `files.content.write`, `files.metadata.read`
         with containment enforced to `/Semptify5.0/Inbox` (containment test passes).
-      - OneDrive: `Files.Read`, `Files.ReadWrite` with containment enforced to an
-        explicit folder-of-record (containment test passes).
-- [~] Real scoped token issuance, expiry, and revocation.
+      - OneDrive: `Files.Read`, `Files.ReadWrite`, `offline_access` with containment
+        enforced to an explicit folder-of-record (containment test passes).
+- [x] Real scoped token issuance, expiry, and revocation.
       - `core/tokens.py` implemented with 90-day default lifetime.
       - Immediate revocation test passes.
       - Per-file tenant validation test passes.
-- [ ] Real plugin manifest registry (minimal, supporting only `local_script` and
+- [x] Real plugin manifest registry (minimal, supporting only `local_script` and
       the Phase 1 plugin).
+- [ ] Provider token storage and refresh for `download-url`/`upload-url`:
+      - `ProviderToken` model exists and callback stores encrypted refresh tokens.
+      - `core/capabilities.py` still uses synthetic tokens; real provider API calls are next.
 - [ ] Prove the "Core never sees bytes" property against real provider APIs.
 - [x] Required tests before final Phase 2 sign-off:
       1. Dropbox containment (rejected outside `/Semptify5.0/Inbox`) — passes.

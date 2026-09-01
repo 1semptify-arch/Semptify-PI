@@ -4,11 +4,19 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ["SEMPIFY_PI_ENCRYPTION_KEY"] = "test-encryption-key"
+os.environ["SEMPIFY_PI_GOOGLE_CLIENT_ID"] = "test-google-client-id"
+os.environ["SEMPIFY_PI_GOOGLE_CLIENT_SECRET"] = "test-google-client-secret"
+os.environ["SEMPIFY_PI_DROPBOX_CLIENT_ID"] = "test-dropbox-client-id"
+os.environ["SEMPIFY_PI_DROPBOX_CLIENT_SECRET"] = "test-dropbox-client-secret"
+os.environ["SEMPIFY_PI_ONEDRIVE_CLIENT_ID"] = "test-onedrive-client-id"
+os.environ["SEMPIFY_PI_ONEDRIVE_CLIENT_SECRET"] = "test-onedrive-client-secret"
 
 from core import main
 from core.database import Database
@@ -198,3 +206,81 @@ def test_complete_upload_containment(core_client: TestClient):
     )
     assert good.status_code == 200
     assert good.json()["vault_path"].startswith("/Semptify5.0/Inbox")
+
+
+async def _fake_token_exchange(provider: str, code: str) -> dict:
+    """Return a believable provider token response without network calls."""
+    return {
+        "access_token": "fake-access-token",
+        "refresh_token": "fake-refresh-token",
+        "expires_in": 3600,
+        "token_type": "Bearer",
+        "scope": " ".join(main.oauth.provider_scopes(provider)),
+    }
+
+
+def test_oauth_start_returns_authorization_url(core_client: TestClient):
+    res = core_client.get(
+        "/auth/google_drive/start",
+        headers={"Authorization": f"Bearer {SESSION}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["authorization_url"].startswith("https://accounts.google.com/o/oauth2/v2/auth")
+
+    # The state token must be opaque and must round-trip through the callback.
+    parsed = urlparse(data["authorization_url"])
+    qs = parse_qs(parsed.query)
+    assert qs["client_id"][0] == "test-google-client-id"
+    assert qs["response_type"][0] == "code"
+    assert "state" in qs
+
+
+def test_oauth_callback_stores_encrypted_provider_token(
+    core_client: TestClient, monkeypatch
+):
+    # Start the flow to get a valid encrypted state token.
+    start = core_client.get(
+        "/auth/google_drive/start",
+        headers={"Authorization": f"Bearer {SESSION}"},
+    )
+    assert start.status_code == 200
+    state = parse_qs(urlparse(start.json()["authorization_url"]).query)["state"][0]
+
+    # Stub out the real provider token exchange.
+    monkeypatch.setattr(main.oauth, "exchange_code", _fake_token_exchange)
+
+    callback = core_client.get(
+        f"/auth/google_drive/callback?code=test-code&state={state}"
+    )
+    assert callback.status_code == 200
+    data = callback.json()
+    assert data["status"] == "connected"
+    assert data["provider"] == "google_drive"
+    assert data["tenant_id"] == SESSION
+    assert data["access_token_present"] is True
+    assert data["expires_at"] is not None
+
+    # The refresh token is stored, not returned.
+    assert "refresh_token" not in data
+
+    # Tenant can list connected providers without seeing secrets.
+    providers = core_client.get(
+        "/api/v1/plugins/connected-providers",
+        headers={"Authorization": f"Bearer {SESSION}"},
+    )
+    assert providers.status_code == 200
+    data = providers.json()
+    assert len(data["providers"]) == 1
+    assert data["providers"][0]["provider"] == "google_drive"
+    assert data["providers"][0]["scopes"]
+    assert "refresh_token" not in data["providers"][0]
+    assert "refresh_token_encrypted" not in data["providers"][0]
+
+
+def test_oauth_callback_rejects_invalid_state(core_client: TestClient, monkeypatch):
+    monkeypatch.setattr(main.oauth, "exchange_code", _fake_token_exchange)
+    res = core_client.get(
+        "/auth/google_drive/callback?code=test-code&state=not-a-real-state"
+    )
+    assert res.status_code == 400

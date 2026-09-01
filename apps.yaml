@@ -12,7 +12,7 @@ services:
   core:
     type: fastapi
     port: 9000
-    run: uvicorn core.main:app --port 9000
+    run: uvicorn core.main:app --port 9000 --env-file .env
     status: standalone
     purpose: Real Core with OAuth/token layer for the plugin API.
 

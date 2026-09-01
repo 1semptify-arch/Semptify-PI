@@ -5,9 +5,10 @@ import json
 import secrets
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
@@ -17,8 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.capabilities import download_capability, is_contained, upload_capability
 from core.config import CoreConfig
 from core.database import Database
-from core.models import Base, PluginManifest, VaultFile
+from core.models import Base, PluginManifest, ProviderToken, VaultFile
 from core.models import PluginToken as PluginTokenModel
+from core.oauth import OAuthManager
 from core.seeding import seed_manifests
 from core.tokens import TokenManager
 
@@ -41,6 +43,7 @@ class CoreState:
 
 
 state = CoreState()
+oauth = OAuthManager(state.config)
 
 
 @asynccontextmanager
@@ -153,6 +156,14 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = None
 
 
+class ProviderTokenView(BaseModel):
+    provider: str
+    scopes: list[str]
+    connected_at: str
+    updated_at: str
+    expires_at: Optional[str] = None
+
+
 async def require_session(
     authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     session: AsyncSession = Depends(get_session),
@@ -206,6 +217,25 @@ async def list_plugins(
             continue
         items.append(_manifest_to_dict(m))
     return {"plugins": items}
+
+
+@app.get("/api/v1/plugins/connected-providers")
+async def list_connected_providers(
+    user_id: str = Depends(require_session),
+    session: AsyncSession = Depends(get_session),
+):
+    """List the cloud storage providers this tenant has connected.
+
+    The refresh token is never returned or displayed.
+    """
+    stmt = select(ProviderToken).where(ProviderToken.tenant_id == user_id)
+    result = await session.execute(stmt)
+    tokens = result.scalars().all()
+    return {
+        "providers": [
+            _provider_token_to_view(t).model_dump() for t in tokens
+        ]
+    }
 
 
 @app.get("/api/v1/plugins/{plugin_id}")
@@ -408,6 +438,130 @@ def _token_to_view(t: PluginTokenModel) -> PluginTokenView:
         expires_at=iso(t.expires_at),
         revoked=t.is_revoked,
     )
+
+
+def _provider_token_to_view(t: ProviderToken) -> ProviderTokenView:
+    return ProviderTokenView(
+        provider=t.provider,
+        scopes=json.loads(t.scopes),
+        connected_at=iso(t.created_at),
+        updated_at=iso(t.updated_at),
+        expires_at=iso(t.expires_at) if t.expires_at else None,
+    )
+
+
+# ------------------------------------------------------------------
+# Provider OAuth flow
+# ------------------------------------------------------------------
+
+
+def _validate_provider(provider: str) -> None:
+    if provider not in {"google_drive", "dropbox", "onedrive"}:
+        raise HTTPException(status_code=400, detail="unsupported provider")
+
+
+@app.get("/auth/{provider}/start")
+async def start_provider_oauth(
+    provider: str,
+    user_id: str = Depends(require_session),
+):
+    """Return the provider consent URL for the logged-in tenant."""
+    _validate_provider(provider)
+    scopes = oauth.provider_scopes(provider)
+    state = oauth.crypto.create_state(user_id, provider, scopes=scopes)
+    authorization_url = oauth.get_authorization_url(provider, state)
+    return {"authorization_url": authorization_url}
+
+
+@app.get("/auth/{provider}/callback")
+async def oauth_callback(
+    provider: str,
+    state: str = Query(...),
+    code: Optional[str] = Query(default=None),
+    error: Optional[str] = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Handle the provider redirect after tenant consent."""
+    _validate_provider(provider)
+
+    if error:
+        raise HTTPException(status_code=400, detail=f"provider error: {error}")
+    if not code:
+        raise HTTPException(status_code=400, detail="missing authorization code")
+
+    try:
+        payload = oauth.crypto.verify_state(state)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid or expired state") from exc
+
+    if payload.get("provider") != provider:
+        raise HTTPException(status_code=400, detail="provider mismatch in state")
+
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id or not isinstance(tenant_id, str):
+        raise HTTPException(status_code=400, detail="missing tenant in state")
+
+    try:
+        token_response = await oauth.exchange_code(provider, code)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"provider token exchange failed: {exc.response.text}",
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"provider unreachable: {exc}",
+        ) from exc
+
+    refresh_token = token_response.get("refresh_token")
+    if not refresh_token or not isinstance(refresh_token, str):
+        raise HTTPException(status_code=400, detail="provider did not return a refresh token")
+
+    access_token = token_response.get("access_token")
+    expires_in = token_response.get("expires_in")
+    scope_str = token_response.get("scope")
+    if not scope_str or not isinstance(scope_str, str):
+        scope_str = " ".join(payload.get("scopes") or oauth.provider_scopes(provider))
+
+    encrypted_refresh = oauth.crypto.encrypt(refresh_token)
+    expires_at: datetime | None = None
+    if expires_in is not None:
+        try:
+            expires_at = utc_now() + timedelta(seconds=int(expires_in))
+        except (TypeError, ValueError):
+            expires_at = None
+
+    stmt = select(ProviderToken).where(
+        ProviderToken.tenant_id == tenant_id,
+        ProviderToken.provider == provider,
+    )
+    result = await session.execute(stmt)
+    provider_token = result.scalar_one_or_none()
+    now = utc_now()
+    if provider_token:
+        provider_token.refresh_token_encrypted = encrypted_refresh
+        provider_token.scopes = json.dumps(scope_str.split())
+        provider_token.expires_at = expires_at
+        provider_token.updated_at = now
+    else:
+        provider_token = ProviderToken(
+            tenant_id=tenant_id,
+            provider=provider,
+            refresh_token_encrypted=encrypted_refresh,
+            scopes=json.dumps(scope_str.split()),
+            expires_at=expires_at,
+        )
+        session.add(provider_token)
+    await session.commit()
+
+    return {
+        "status": "connected",
+        "provider": provider,
+        "tenant_id": tenant_id,
+        "access_token_present": bool(access_token),
+        "expires_at": iso(expires_at) if expires_at else None,
+    }
 
 
 def run() -> None:

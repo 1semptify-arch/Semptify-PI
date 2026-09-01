@@ -1,5 +1,41 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Phase 2 continuation: real OAuth code exchange and encrypted token storage
+
+### Task
+
+- **Task ID:** `pi-phase-2-core-oauth-implementation-2026-09-01` (resume)
+- **Scope:** Implement the real OAuth authorization-code exchange, callback endpoints, and encrypted provider refresh-token storage.
+
+### What changed
+
+- `core/oauth.py`:
+  - Per-provider authorization URL builders for Google Drive, Dropbox, and OneDrive with correct scopes and provider-specific parameters (`access_type=offline`, `token_access_type=offline`, `response_mode=query`, `offline_access` for OneDrive).
+  - Async `exchange_code(provider, code)` using `httpx` to swap an authorization code for provider access/refresh tokens.
+  - `TokenCrypto` class using Fernet to encrypt provider refresh tokens and signed OAuth `state` tokens.
+- `core/config.py`: added `SEMPIFY_PI_ENCRYPTION_KEY` configuration.
+- `core/main.py`: added `/auth/{provider}/start`, `/auth/{provider}/callback`, and `/api/v1/plugins/connected-providers` endpoints. Callback decrypts `state`, exchanges the code, and stores an encrypted `ProviderToken`.
+- `tests/test_core.py`: added OAuth start/callback tests with stubbed provider exchange, verifying state round-trip and encrypted refresh-token storage.
+- `apps.yaml` and `BUILD_GUIDE.md`: updated `core` run command to `--env-file .env` and documented OAuth/encryption env vars.
+- `.env.example`: added `SEMPIFY_PI_ENCRYPTION_KEY` placeholder.
+- `.env`: generated and appended a real Fernet encryption key (gitignored, not committed).
+
+### Verification
+
+- `ruff check mock_core local_script core tests`: PASS
+- `mypy mock_core local_script core tests`: PASS
+- `python -m py_compile` on changed files: PASS
+- `pytest tests/ -q`: **24 passed**
+- Authorization URL smoke test against real `.env` credentials: PASS for all three providers
+
+### Notes
+
+- Real provider API calls for `download-url`/`upload-url` remain pending; `core/capabilities.py` still returns synthetic provider tokens/URLs.
+- A real end-to-end test requires Brad to visit a generated `/auth/{provider}/start` URL, consent, and let the callback receive a live authorization code.
+- The Microsoft OneDrive authorization request now includes the `offline_access` scope so the token response includes a refresh token.
+
+---
+
 ## Session — 2026-09-01 — Phase 3: provider OAuth app registration (Brad-only)
 
 ### Task

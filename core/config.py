@@ -61,6 +61,11 @@ class CoreConfig:
         "http://localhost:9000/auth/onedrive/callback",
     )
 
+    # ------------------------------------------------------------------
+    # Encryption (must stay out of git; set in .env or host environment)
+    # ------------------------------------------------------------------
+    encryption_key: str = os.getenv("SEMPIFY_PI_ENCRYPTION_KEY", "")
+
     @classmethod
     def from_env(cls) -> "CoreConfig":
         return cls()

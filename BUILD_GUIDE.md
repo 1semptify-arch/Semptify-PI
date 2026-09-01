@@ -13,6 +13,7 @@
 4. Run services from `apps.yaml`:
    ```powershell
    uvicorn mock_core.main:app --port 9000
+   uvicorn core.main:app --port 9000 --env-file .env
    ```
 
 ## Environment variables
@@ -24,14 +25,18 @@
 | `SEMPIFY_PI_PLUGIN_TOKEN` | Example plugin token for local testing. |
 | `SEMPIFY_PI_CORE_URL` | URL of the Core instance the plugin talks to. |
 | `DATABASE_URL` | Local PostgreSQL 16 for agent/tests. Example: `postgresql+asyncpg://semptify_pi:<password>@localhost:5432/semptify_pi` |
+| `SEMPIFY_PI_ENCRYPTION_KEY` | Fernet key for encrypting provider refresh tokens at rest. |
+| `SEMPIFY_PI_GOOGLE_CLIENT_ID/SECRET` | Google Drive OAuth app credentials. |
+| `SEMPIFY_PI_DROPBOX_CLIENT_ID/SECRET` | Dropbox OAuth app credentials. |
+| `SEMPIFY_PI_ONEDRIVE_CLIENT_ID/SECRET` | Microsoft OneDrive OAuth app credentials. |
 
 ## Verification commands
 
 - `python -m py_compile <file>` — compile check.
 - `python tools/verify_postgres.py` — confirm Postgres connection.
 - `pytest tests/ -q` — run the full test suite (local_script + mock_core + browser_extension).
-- `ruff check mock_core local_script tests` — lint.
-- `mypy mock_core local_script tests` — type check.
+- `ruff check mock_core local_script core tests` — lint.
+- `mypy mock_core local_script core tests` — type check.
 - `pip install -e .[dev]` — install dev dependencies (pytest, ruff, mypy).
 
 ### Browser extension Node tests
