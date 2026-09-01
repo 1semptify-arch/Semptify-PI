@@ -1,5 +1,89 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Phase 3: provider OAuth app registration (Brad-only)
+
+### Task
+
+- **Task ID:** `pi-phase-3-provider-registration-2026-09-01`
+- **Scope:** Brad registers OAuth apps with Google Cloud Console, Dropbox App Console, and Microsoft Entra. Agent resumes Phase 2 code exchange once credentials exist.
+
+### Required values
+
+Set these in `C:\master-repo\sources\app-semptify-pi\.env` (gitignored) or in Render environment variables:
+
+| Provider | Client ID env var | Client secret env var | Redirect URI env var | Scopes |
+|----------|-------------------|-----------------------|----------------------|--------|
+| Google Drive | `SEMPIFY_PI_GOOGLE_CLIENT_ID` | `SEMPIFY_PI_GOOGLE_CLIENT_SECRET` | `SEMPIFY_PI_GOOGLE_REDIRECT_URI` | `https://www.googleapis.com/auth/drive.file` |
+| Dropbox | `SEMPIFY_PI_DROPBOX_CLIENT_ID` | `SEMPIFY_PI_DROPBOX_CLIENT_SECRET` | `SEMPIFY_PI_DROPBOX_REDIRECT_URI` | `files.content.read files.content.write files.metadata.read` |
+| OneDrive | `SEMPIFY_PI_ONEDRIVE_CLIENT_ID` | `SEMPIFY_PI_ONEDRIVE_CLIENT_SECRET` | `SEMPIFY_PI_ONEDRIVE_REDIRECT_URI` | `Files.Read Files.ReadWrite User.Read` |
+
+Default redirect URIs (all local):
+
+- `http://127.0.0.1:9000/auth/google/callback`
+- `http://127.0.0.1:9000/auth/dropbox/callback`
+- `http://127.0.0.1:9000/auth/onedrive/callback`
+
+### Checklist
+
+#### Google Cloud Console
+
+1. Go to https://console.cloud.google.com/ and create or select a project.
+2. Enable the **Google Drive API** (APIs & Services → Library → Google Drive API → Enable).
+3. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+4. Application type: **Web application**.
+5. Name: `Semptify-PI Core`.
+6. Add authorized redirect URI: `http://127.0.0.1:9000/auth/google/callback`.
+7. Save and copy the **Client ID** and **Client secret**.
+8. If the app will later run on a public Render domain, add the production redirect URI at the same screen; Google supports multiple redirect URIs.
+
+#### Dropbox App Console
+
+1. Go to https://www.dropbox.com/developers/apps.
+2. Choose **Create app**.
+3. Choose an API: **Scoped access**.
+4. Choose the type of access: **Full Dropbox** (not app folder — Semptify enforces its own `/Semptify5.0/Inbox` containment boundary in code).
+5. Name the app: `Semptify-PI`.
+6. In the app settings, add the redirect URI: `http://127.0.0.1:9000/auth/dropbox/callback`.
+7. In the **Permissions** tab, enable:
+   - `files.content.read`
+   - `files.content.write`
+   - `files.metadata.read`
+8. Submit for review if required, or use it in development mode first.
+9. Copy the **App key** (Client ID) and **App secret** (Client secret).
+
+#### Microsoft Entra / Azure App registrations
+
+1. Go to https://portal.azure.com/ or https://entra.microsoft.com/.
+2. Go to **Microsoft Entra ID → App registrations → New registration**.
+3. Name: `Semptify-PI Core`.
+4. Supported account types: **Accounts in any organizational directory (multitenant) and personal Microsoft accounts**.
+5. Redirect URI: platform **Web**, value `http://127.0.0.1:9000/auth/onedrive/callback`.
+6. Register, then copy the **Application (client) ID**.
+7. Go to **Certificates & secrets → New client secret** and copy the secret **Value**.
+8. Go to **API permissions → Add a permission → Microsoft Graph → Delegated permissions** and add:
+   - `Files.Read`
+   - `Files.ReadWrite`
+   - `User.Read`
+9. Admin consent is not required for personal accounts; for organizational accounts, an admin may need to consent `Files.ReadWrite`.
+
+### What to do after registration
+
+1. Copy `C:\master-repo\sources\app-semptify-pi\.env.example` to `.env`.
+2. Fill in the nine variables above with the real client IDs and secrets.
+3. Do **not** commit `.env`; it is already `.gitignore`d.
+4. When the `.env` file exists, tell the agent to resume the `pi-phase-2-core-oauth-implementation-2026-09-01` task; the agent will implement the real OAuth code exchange and refresh-token storage.
+
+### Status
+
+- [ ] Google client ID/secret obtained.
+- [ ] Dropbox app key/secret obtained.
+- [ ] OneDrive client ID/secret obtained.
+- [ ] `.env` filled in and not committed.
+
+---
+
+# Semptify-PI Build State
+
 ## Session — 2026-09-01 — Phase 2 implementation: real Core token/containment layer
 
 ### Task
