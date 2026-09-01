@@ -54,7 +54,15 @@ for the agent to complete, verify, commit, and request push approval.
 - [x] Update `BLUEPRINT.md` and `BUILD_STATE.md` with current status and this
       roadmap.
 
-### Phase 1 — `browser_extension` reference plugin (in progress)
+### Phase 1 — `browser_extension` reference plugin (done)
+
+- [x] `browser_extension/` package with Manifest V3, popup, shared `api-client.mjs`,
+      and Node test runner.
+- [x] `tests/test_browser_extension.py` with live `mock_core` fixture.
+- [x] Verification: `py_compile`, `pytest tests/ -q` (15 passed), manual Node
+      round-trip across Google Drive/Dropbox/OneDrive.
+
+### Phase 2 — Real Core implementation (next)
 
 **No sign-off needed.** This is the second reference plugin. It follows the
 same pattern as `local_script` and proves the provider-differentiated contract

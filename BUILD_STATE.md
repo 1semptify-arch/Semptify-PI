@@ -24,10 +24,11 @@
 
 ### Verification
 
-- `python -m py_compile tests/conftest.py tests/test_browser_extension.py mock_core/main.py`: PASS
+- `python -m py_compile tests/conftest.py tests/test_browser_extension.py tests/test_local_script.py mock_core/main.py`: PASS
 - `pytest tests/ -v`: **15 passed** (8 local_script tests + 2 browser_extension tests + 5 parametrized provider tests)
 - Manual Node round-trip against `uvicorn mock_core.main:app --port 9000`:
   - list, get, connect, me, download for Google Drive/Dropbox/OneDrive, upload for all three, complete — all OK.
+- Pushed to `1semptify-arch/Semptify-PI` at `2aaae69`.
 
 ### Notes
 
