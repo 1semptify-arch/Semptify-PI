@@ -71,24 +71,25 @@ real token issuance, real tenant cloud access.
 - [x] Brad sign-off on the plan — **approved with conditions** (see decision record in handoff).
 - [ ] Implement real OAuth flows for Google Drive, Dropbox, and OneDrive using
       the confirmed per-provider contract shapes.
+      - `core/oauth.py` provides authorization-URL builders for all three.
+      - Code exchange not yet implemented (requires Phase 3 credentials).
       - Google Drive: `drive.file`.
       - Dropbox: `files.content.read`, `files.content.write`, `files.metadata.read`
-        with containment enforced to `/Semptify5.0/Inbox`.
+        with containment enforced to `/Semptify5.0/Inbox` (containment test passes).
       - OneDrive: `Files.Read`, `Files.ReadWrite` with containment enforced to an
-        explicit folder-of-record.
-- [ ] Real scoped token issuance, expiry, and revocation.
-      - Default plugin-token lifetime: **90 days** for browser extension and
-        local script.
-      - 1-year extension for browser extension allowed only after immediate
-        revocation and per-file tenant validation tests pass.
+        explicit folder-of-record (containment test passes).
+- [~] Real scoped token issuance, expiry, and revocation.
+      - `core/tokens.py` implemented with 90-day default lifetime.
+      - Immediate revocation test passes.
+      - Per-file tenant validation test passes.
 - [ ] Real plugin manifest registry (minimal, supporting only `local_script` and
       the Phase 1 plugin).
 - [ ] Prove the "Core never sees bytes" property against real provider APIs.
-- [ ] Required tests before final Phase 2 sign-off:
-      1. Dropbox containment (rejected outside `/Semptify5.0/Inbox`).
-      2. OneDrive containment (outside folder-of-record).
-      3. Token revocation (revoked token rejected on next use).
-      4. Per-file tenant validation (token cannot reach another tenant's files).
+- [x] Required tests before final Phase 2 sign-off:
+      1. Dropbox containment (rejected outside `/Semptify5.0/Inbox`) — passes.
+      2. OneDrive containment (outside folder-of-record) — passes.
+      3. Token revocation (revoked token rejected on next use) — passes.
+      4. Per-file tenant validation (token cannot reach another tenant's files) — passes.
 
 **🛑 Sign-off checkpoint: before Phase 2 is marked done.** Security/privacy
 review of the real OAuth/token implementation.

@@ -1,5 +1,47 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Phase 2 implementation: real Core token/containment layer
+
+### Task
+
+- **Task ID:** `pi-phase-2-core-oauth-implementation-2026-09-01`
+- **Scope:** Begin the real Core implementation. Token model, containment, and the required condition tests for Brad's approval.
+
+### What changed
+
+- New `core/` package:
+  - `core/config.py` — Core settings, token lifetimes, vault folder, provider OAuth env vars.
+  - `core/database.py` — async SQLAlchemy engine + session factory.
+  - `core/models.py` — `PluginManifest`, `PluginToken`, `ProviderToken`, `VaultFile`, plus `UTCDateTime` decorator.
+  - `core/tokens.py` — token issue/validate/revoke and per-file tenant validation.
+  - `core/capabilities.py` — provider capability generation with vault-path containment.
+  - `core/oauth.py` — OAuth URL builders (not yet exchanging codes; Phase 3 credentials).
+  - `core/seeding.py` — seed the reference plugin manifest.
+  - `core/main.py` — FastAPI app with the full plugin API.
+- `tests/test_core.py` — tests for the four Brad-mandated conditions:
+  1. Token revocation is immediate (`test_revoke_token_rejected_next_use`).
+  2. Per-file tenant validation (`test_per_file_tenant_validation`).
+  3. Dropbox containment outside `/Semptify5.0/Inbox` is rejected.
+  4. OneDrive containment outside the vault folder is rejected.
+- `pyproject.toml` — added `sqlalchemy[asyncio]`, `aiosqlite`, `core` package, `pi-core` script.
+- `apps.yaml` — added `core` service.
+- `.env.example` — added Core token, vault folder, and provider OAuth placeholders.
+
+### Verification
+
+- `ruff check mock_core local_script core tests`: PASS
+- `mypy mock_core local_script core tests`: PASS
+- `python -m py_compile` on changed files: PASS
+- `pytest tests/ -q`: **21 passed**
+
+### Notes
+
+- OAuth code exchange is not yet implemented — it requires Brad-registered provider credentials (Phase 3).
+- Provider access tokens are still synthetic; real refresh/access token exchange and scoped provider calls are next.
+- The real Core currently uses SQLite for in-memory tests; Postgres is configured for local/Render via `DATABASE_URL`.
+
+---
+
 ## Session — 2026-09-01 — Phase 2 OAuth/token plan (approved with conditions)
 
 ### Task

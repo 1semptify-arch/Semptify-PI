@@ -9,6 +9,13 @@ services:
     status: standalone
     purpose: Local test double for Semptify Core's plugin API.
 
+  core:
+    type: fastapi
+    port: 9000
+    run: uvicorn core.main:app --port 9000
+    status: standalone
+    purpose: Real Core with OAuth/token layer for the plugin API.
+
   local_script:
     type: cli
     port: null

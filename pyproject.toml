@@ -11,6 +11,7 @@ dependencies = [
     "httpx>=0.27.0",
     "cryptography>=42.0.0",
     "asyncpg>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -18,10 +19,12 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6.0",
     "mypy>=1.0",
+    "aiosqlite>=0.20.0",
 ]
 
 [project.scripts]
 mock-core = "mock_core.main:run"
+pi-core = "core.main:run"
 local-plugin = "local_script.semtify_plugin:main"
 
 [build-system]
@@ -29,12 +32,12 @@ requires = ["hatchling>=1.21.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["mock_core", "local_script"]
+packages = ["mock_core", "local_script", "core"]
 
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-src = ["mock_core", "local_script", "tests"]
+src = ["mock_core", "local_script", "core", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
