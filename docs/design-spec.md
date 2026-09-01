@@ -27,12 +27,12 @@ This is a **planning document**. It does not commit any code. It defines a clien
 
 The earlier research report (`plugin-architecture-clientside-research-2026-08-28-report.md`) is superseded on one key point: it recommended that **Core mediate all storage access** ("plugin asks Core for a file, Core reads it and returns the result"). The later-locked decision is stricter: **Core must not transport document bytes at all**. This spec replaces the "through Core" flow with a **capability/direct-URL flow**.
 
-### Two decisions remain open
+### Decisions resolved
 
-- **Plugin directory location:** `semptify.org/plugins` (same site) vs. `plugins.semptify.org` (separate domain).
-- **Build order:** ship one reference plugin first, or publish the API spec first for third-party/agent development.
-
-This spec notes those gaps but does not resolve them.
+- **Plugin directory location:** both pieces exist, at different times and domains.
+  - `semptify.org/plugins` is the in-Core landing/explainer page (already approved for Core; see `add-plugins-landing-page-2026-08-30`).
+  - `plugins.semptify.org` (or wherever the Render-deployed directory is hosted) becomes the real plugin directory and the redirect destination once it is live.
+- **Build order:** ship a reference plugin first (`local_script` is the smallest), then publish the spec. The spec stays provisional until a real client has round-tripped against it.
 
 ---
 
@@ -237,7 +237,7 @@ A plugin must declare what it is, what it can do, and how to install it. The man
 
 **Auth flow:**
 1. Extension opens a small popup or sidebar with a **Connect to Semptify** button.
-2. Button opens a browser tab to `https://<domain>/plugins/connect?plugin_id=...` (exact domain is an open decision).
+2. Button opens a browser tab to `https://plugins.semptify.org/plugins/connect?plugin_id=...` (or the equivalent Render-hosted domain).
 3. The tenant is already logged into Semptify in that browser, so the connect page sees the active session.
 4. After the tenant clicks **Allow**, Core issues a plugin token and either:
    - displays the token for the user to copy and paste into the extension, or
@@ -428,17 +428,21 @@ No edits are made now. If this spec is accepted, the likely touch points are:
 
 ---
 
-## 10. Open questions to resolve before implementation
+## 10. Decisions resolved and remaining open questions
 
-This spec does not resolve the following. These are the same open questions noted in the source handoffs:
+The following two questions are now resolved; the rest remain open before implementation.
+
+### Resolved
 
 1. **Plugin directory location:**
-   - `semptify.org/plugins` (same domain, simpler CORS and deploy)
-   - `plugins.semptify.org` (separate domain, cleaner isolation, more DNS work)
+   - `semptify.org/plugins` is the Core landing/redirect page.
+   - `plugins.semptify.org` (or the Render-hosted equivalent) is the real plugin directory.
 
 2. **Build order:**
-   - Build a reference plugin first alongside the API.
-   - Publish the API spec first and let agents/third parties build plugins.
+   - Build the `local_script` reference plugin first alongside the API.
+   - Publish the spec for third-party use only after the reference plugin round-trips cleanly.
+
+### Remaining open
 
 3. **Provider-specific direct URL support:**
    - Google Drive does not expose a clean, tokenless direct download URL for arbitrary files. The design may need a Google-specific approach (e.g., a short-lived signed URL generated via a service-account or a one-time `alt=media` redirect). This should be validated before committing to the "Core never sees bytes" rule for Google.
