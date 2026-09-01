@@ -75,13 +75,11 @@ Default redirect URIs (all local):
 
 ### Status
 
-- [x] Google/Dropbox/OneDrive redirect URIs added.
-- [x] Decision made: PI gets its own OAuth app registrations, separate from Core.
-- [ ] Remove PI redirect URIs from Core's existing app registrations.
-- [ ] Create new PI-specific Google/Dropbox/Microsoft app registrations.
-- [ ] Google client ID/secret obtained (PI-specific).
-- [ ] Dropbox app key/secret obtained (PI-specific).
-- [ ] OneDrive client ID/secret obtained (PI-specific).
+- [x] Google/Dropbox/OneDrive redirect URIs added to Core's existing app registrations.
+- [x] Decision made (2026-09-01): proceed with Core's shared credentials for now; split to PI-specific apps before Phase 5 / real users.
+- [ ] Core's shared Google client ID/secret obtained.
+- [ ] Core's shared Dropbox app key/secret obtained.
+- [ ] Core's shared OneDrive client ID/secret obtained.
 - [ ] `.env` filled in and not committed.
 
 ---
