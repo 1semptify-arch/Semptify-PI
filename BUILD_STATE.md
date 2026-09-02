@@ -1,5 +1,32 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Track 3 start: add OAuth refresh helper
+
+### Task
+
+- **Task ID:** `pi-phase-2-core-oauth-implementation-2026-09-01` (Track 3)
+- **Scope:** Begin real provider capability work by adding `OAuthManager.refresh_access_token` and shared `_token_request` helper.
+
+### What changed
+
+- `core/oauth.py`: added `refresh_access_token()`; refactored `exchange_code` to use `_token_request` with typed JSON validation.
+
+### Verification
+
+- `py -3.11 -m py_compile core/oauth.py`: PASS
+- `py -3.11 -m pytest tests/test_core.py -q`: **10 passed**
+- `py -3.11 -m ruff check core/oauth.py`: PASS
+- `py -3.11 -m mypy core/oauth.py`: PASS
+
+### Notes
+
+- Track 3 is large. The refresh helper is the first building block. The remaining pieces are:
+  1. Real `download_capability` (read-only provider calls, no side effects).
+  2. Real `upload_capability` (needs design decision on Google Drive vault folder creation).
+- Core is still running at `http://127.0.0.1:9000`; the real Google Drive `ProviderToken` is stored.
+
+---
+
 ## Session — 2026-09-01 — Track 2 attempt: fix Google OAuth callback provider alias
 
 ### Task
