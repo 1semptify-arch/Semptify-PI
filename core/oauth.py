@@ -192,31 +192,44 @@ class OAuthManager:
         query = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
         return f"{cfg.authorization_base}?{query}"
 
-    async def exchange_code(self, provider: str, code: str) -> dict[str, Any]:
-        """Exchange an OAuth authorization code for tokens.
-
-        Returns the provider's token response as a dict. Callers are responsible
-        for storing the refresh token encrypted and discarding the access token
-        when it expires.
-        """
+    def _provider_token_data(self, provider: str) -> dict[str, str]:
+        """Return common token request fields for the provider."""
         cfg = self._provider_config(provider)
         if not cfg.client_id or not cfg.client_secret:
             raise RuntimeError(f"{provider} OAuth credentials are not configured")
-
-        data = {
-            "grant_type": "authorization_code",
-            "code": code,
+        return {
             "client_id": cfg.client_id,
             "client_secret": cfg.client_secret,
-            "redirect_uri": cfg.redirect_uri,
         }
+
+    async def _token_request(self, provider: str, data: dict[str, str]) -> dict[str, Any]:
+        """POST to the provider token endpoint and return the JSON response."""
+        cfg = self._provider_config(provider)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(cfg.token_url, data=data)
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("OAuth token response must be an object")
+            return cast(dict[str, Any], payload)
+
+    async def exchange_code(self, provider: str, code: str) -> dict[str, Any]:
+        """Exchange an OAuth authorization code for tokens."""
+        data = self._provider_token_data(provider)
+        data["grant_type"] = "authorization_code"
+        data["code"] = code
+        data["redirect_uri"] = self._provider_config(provider).redirect_uri
 
         # Microsoft requires the scope repeated on the token request; the other
         # providers accept or ignore it.
         if provider == "onedrive":
-            data["scope"] = " ".join(cfg.scopes)
+            data["scope"] = " ".join(self._provider_config(provider).scopes)
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(cfg.token_url, data=data)
-            response.raise_for_status()
-            return cast(dict[str, Any], response.json())
+        return await self._token_request(provider, data)
+
+    async def refresh_access_token(self, provider: str, refresh_token: str) -> dict[str, Any]:
+        """Exchange a refresh token for a new access token."""
+        data = self._provider_token_data(provider)
+        data["grant_type"] = "refresh_token"
+        data["refresh_token"] = refresh_token
+        return await self._token_request(provider, data)
