@@ -72,7 +72,7 @@ literal-string bleed.
    - **Start command:** `uvicorn core.main:app --host 0.0.0.0 --port $PORT`
    - **Health check path:** `/health`
 5. Set the secret environment variables in the Render Dashboard:
-   - `DATABASE_URL` — the deployed Postgres URL (Render Postgres free tier, or your own).
+   - `DATABASE_URL` — the deployed Postgres URL. For Neon, use `postgresql+asyncpg://<role>:<password>@<host>/<database>?ssl=require`. The `?ssl=require` query parameter is required for `asyncpg`; `sslmode=require` will not work.
    - `SEMPIFY_PI_ENCRYPTION_KEY` — the Fernet key.
    - Google, Dropbox, and OneDrive client ID/secret and redirect URIs.
 6. Add your custom domain (`plugins.semptify.org`) under the service's **Custom Domains**.

@@ -27,13 +27,18 @@
 - Cloudflare is used for DNS; proposed subdomain `plugins.semptify.org`.
 - Service creation and DNS changes are **not done yet**; next step is Brad's final OK.
 
+### What happened after commit
+
+- Semptify-PI GitHub repo made public so Render could fetch it.
+- Free Render web service `septify-pi` created: `https://septify-pi.onrender.com`.
+- Free Render Postgres `septify-pi-db` created (30-day expiry).
+- First two deploys failed because `DATABASE_URL` used a placeholder password and `SEMPIFY_PI_ENCRYPTION_KEY` was not set.
+- Brad clarified that Semptify uses **Neon** as the system database, so a dedicated `septify_pi` database was created in the existing Neon `semptify` project and verified with `asyncpg`.
+
 ### Next step
 
-- Make the Semptify-PI GitHub repo public so Render can fetch it.
-- Create the free Render service `septify-pi`.
-- Create the free Render Postgres `septify-pi-db`.
-- Set the real `DATABASE_URL`, `SEMPIFY_PI_ENCRYPTION_KEY`, and provider OAuth credentials in the Render Dashboard.
-- Update Google/Dropbox/OneDrive OAuth redirect URIs to `https://septify-pi.onrender.com/auth/{provider}/callback`.
+- Set the real `DATABASE_URL` and `SEMPIFY_PI_ENCRYPTION_KEY` in the Render Dashboard for `septify-pi`, then redeploy.
+- Add provider OAuth client ID/secret and redirect URIs (`https://septify-pi.onrender.com/auth/{provider}/callback`) when ready to test live OAuth.
 - DNS: no custom domain for now; the Render address is `https://septify-pi.onrender.com`.
 
 ---
