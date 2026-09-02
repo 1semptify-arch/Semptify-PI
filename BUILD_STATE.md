@@ -1,5 +1,33 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Track 1B: plugin blueprint template, backfills, and PluginRegistry check
+
+### Task
+
+- **Task ID:** `pi-housekeeping-2026-09-01` (Track 1B)
+- **Scope:** Add a standing plugin blueprint template, backfill it for the two reference plugins, and verify the PluginRegistry pattern already exists.
+
+### What changed
+
+- `docs/plugin_blueprint_template.md`: standing template for new plugins.
+- `docs/plugin_blueprints/local_script.md`: backfilled blueprint for the `local_script` reference packaging.
+- `docs/plugin_blueprints/browser_extension.md`: backfilled blueprint for the `browser_extension` reference packaging.
+- `core/models.py` (`PluginManifest`), `core/seeding.py`, and `core/main.py` list/get endpoints: confirmed this is the existing PluginRegistry pattern (plugin_id → full metadata via DB + API). No new registry code was needed.
+
+### Verification
+
+- `python C:\master-repo\tools\check_repo_bleed.py`: PASS for both repos.
+- `ruff check mock_core local_script core tests`: PASS
+- `mypy mock_core local_script core tests`: PASS
+- `pytest tests/ -q`: **24 passed**
+
+### Notes
+
+- Both backfilled blueprints use `plugin_id: example-document-organizer` and `platform: local_script` / `browser_extension`.
+- Roles and public-release readiness are flagged as uncertain and need Brad review.
+
+---
+
 ## Session — 2026-09-01 — Track 1A: repo separation convention and bleed checks
 
 ### Task
@@ -10,11 +38,11 @@
 ### What changed
 
 - `C:\master-repo\CONVENTIONS.md`: master source-of-truth doc stating that build docs, hand-offs, and logs stay fully separate per repo; citations are allowed, copied blocks are not.
-- `C:\master-repo\tools\check_repo_bleed.py`: automated cross-repo bleed check. Greps each repo's tracked files for the other repo's literal name/path strings (e.g. `app-semptify-fastapi`, `FunctionGroupContract`, `product_manifest.py` in PI; `app-semptify-pi`, `mock_core`, `browser_extension` in Core).
+- `C:\master-repo\tools\check_repo_bleed.py`: automated cross-repo bleed check. Greps each repo's tracked files for the other repo's literal name/path strings (e.g. the Core repo path and Core module names in PI; the PI repo name and plugin paths in Core).
 - `.pre-commit-config.yaml`: wired `check_repo_bleed.py` so it runs on every commit.
 - `AGENTS.md` and `BUILD_GUIDE.md`: linked to `C:\master-repo\CONVENTIONS.md` as the source of truth.
 - `docs/design-spec.md`: replaced literal Core file paths and module names with short citations ("Semptify Core security/user-context/storage modules").
-- `BLUEPRINT.md`: replaced the literal `C:\master-repo\modules\app-semptify-fastapi` path with a short "Semptify Core repo" citation.
+- `BLUEPRINT.md`: replaced a literal Core repo path with a short "Semptify Core repo" citation.
 - `tools/orchestrator_state.json`: marked `pi-phase-2-core-oauth-implementation-2026-09-01` as `blocked_on_decision` (waiting for Brad's live OAuth login before `core/capabilities.py` can be tested); added `pi-housekeeping-2026-09-01` as `in_progress`.
 
 ### Verification
