@@ -11,6 +11,10 @@
 
 ---
 
+## Executive Summary
+
+Semptify is a no-cost, no-advertising, web-based workspace that helps tenants document their housing situation, understand their rights, and prepare organized materials for court and legal-aid advocates. Semptify is built for tenants, not landlords; a landlord may receive a document only if the tenant chooses to send it.
+
 ## 1. What this spec is and is not
 
 This is a **planning document**. It does not commit any code. It defines a client-side plugin architecture for Semptify that follows the locked decisions from `plugin-architecture-tasklist-2026-08-28.md`:
