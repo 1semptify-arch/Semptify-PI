@@ -29,7 +29,12 @@
 
 ### Next step
 
-- Confirm the exact service name (`septify-pi`) and subdomain (`plugins.semptify.org`), then create the Render service and Cloudflare CNAME.
+- Make the Semptify-PI GitHub repo public so Render can fetch it.
+- Create the free Render service `septify-pi`.
+- Create the free Render Postgres `septify-pi-db`.
+- Set the real `DATABASE_URL`, `SEMPIFY_PI_ENCRYPTION_KEY`, and provider OAuth credentials in the Render Dashboard.
+- Update Google/Dropbox/OneDrive OAuth redirect URIs to `https://septify-pi.onrender.com/auth/{provider}/callback`.
+- DNS: no custom domain for now; the Render address is `https://septify-pi.onrender.com`.
 
 ---
 
