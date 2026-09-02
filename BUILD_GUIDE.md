@@ -50,6 +50,13 @@ $env:SESSION_TOKEN="sess_test"
 node browser_extension/test-node.mjs
 ```
 
+## Conventions
+
+`C:\master-repo\CONVENTIONS.md` is the master source of truth for keeping this
+repo's build docs, hand-offs, and logs separate from Semptify Core's. The
+automated `check_repo_bleed.py` guardrail runs in pre-commit to catch accidental
+literal-string bleed.
+
 ## Notes
 
 - This repo is decoupled from Semptify Core. It has its own `DATABASE_URL` and does not share Core's database.

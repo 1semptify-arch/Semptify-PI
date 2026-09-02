@@ -6,9 +6,8 @@
 
 This blueprint is scoped to **Semptify-PI only**. The Semptify Core Preamble
 (onboarding, vault, document center) and the public `semptify.org` site are
-managed in `C:\master-repo\modules\app-semptify-fastapi` and are not in scope
-here. The Core-wide "module blueprint / narrative interpreter" initiative is a
-separate, later effort.
+managed in the **Semptify Core** repo and are not in scope here. The Core-wide
+"module blueprint / narrative interpreter" initiative is a separate, later effort.
 
 ---
 

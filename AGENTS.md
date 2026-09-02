@@ -26,3 +26,9 @@ This repo is worked on by AI coding agents (Devin, Windsurf, Claude Code, etc.).
 - `apps.yaml` is the source of truth for which services run and how.
 - Every app under this repo is standalone unless `apps.yaml` says otherwise.
 - The public API surface for plugins is in `plugin_api_spec/` and `docs/design-spec.md`.
+
+## Cross-repo conventions
+
+`C:\master-repo\CONVENTIONS.md` is the master source of truth for keeping this
+repo's build docs, hand-offs, and logs separate from Semptify Core's. Read it
+before adding cross-repo references; cite, do not copy.

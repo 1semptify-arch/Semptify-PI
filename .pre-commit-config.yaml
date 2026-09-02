@@ -31,3 +31,10 @@ repos:
         types: [python]
         pass_filenames: false
         always_run: true
+
+      - id: check-repo-bleed
+        name: check repo bleed
+        entry: python C:\master-repo\tools\check_repo_bleed.py
+        language: system
+        pass_filenames: false
+        always_run: true

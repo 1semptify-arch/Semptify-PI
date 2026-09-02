@@ -1,5 +1,36 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Track 1A: repo separation convention and bleed checks
+
+### Task
+
+- **Task ID:** `pi-housekeeping-2026-09-01` (Track 1A)
+- **Scope:** Formalize the Core/PI repo-separation convention, add the automated `check_repo_bleed.py` guardrail, and retroactively clean PI docs that had Core-specific literal strings.
+
+### What changed
+
+- `C:\master-repo\CONVENTIONS.md`: master source-of-truth doc stating that build docs, hand-offs, and logs stay fully separate per repo; citations are allowed, copied blocks are not.
+- `C:\master-repo\tools\check_repo_bleed.py`: automated cross-repo bleed check. Greps each repo's tracked files for the other repo's literal name/path strings (e.g. `app-semptify-fastapi`, `FunctionGroupContract`, `product_manifest.py` in PI; `app-semptify-pi`, `mock_core`, `browser_extension` in Core).
+- `.pre-commit-config.yaml`: wired `check_repo_bleed.py` so it runs on every commit.
+- `AGENTS.md` and `BUILD_GUIDE.md`: linked to `C:\master-repo\CONVENTIONS.md` as the source of truth.
+- `docs/design-spec.md`: replaced literal Core file paths and module names with short citations ("Semptify Core security/user-context/storage modules").
+- `BLUEPRINT.md`: replaced the literal `C:\master-repo\modules\app-semptify-fastapi` path with a short "Semptify Core repo" citation.
+- `tools/orchestrator_state.json`: marked `pi-phase-2-core-oauth-implementation-2026-09-01` as `blocked_on_decision` (waiting for Brad's live OAuth login before `core/capabilities.py` can be tested); added `pi-housekeeping-2026-09-01` as `in_progress`.
+
+### Verification
+
+- `python C:\master-repo\tools\check_repo_bleed.py`: PASS for both repos.
+- `ruff check mock_core local_script core tests`: PASS
+- `mypy mock_core local_script core tests`: PASS
+- `pytest tests/ -q`: **24 passed**
+
+### Notes
+
+- The design-spec and BLUEPRINT changes are retroactive doc cleanup. No code was changed.
+- Track 1B (plugin blueprint template, backfill, PluginRegistry) remains pending.
+
+---
+
 ## Session — 2026-09-01 — Phase 2 continuation: real OAuth code exchange and encrypted token storage
 
 ### Task

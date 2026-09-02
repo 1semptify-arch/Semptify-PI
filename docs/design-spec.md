@@ -6,14 +6,8 @@
 **Status:** Design spec — planning only, no implementation code  
 
 **Sources read for this spec:**
-- `C:\master-repo\modules\app-semptify-fastapi\tools\agent_orchestrator_tasks.json` (task `plugin-arch-design-spec-2026-08-28`)
-- `C:\master-repo\handoffs\plugin-architecture-tasklist-2026-08-28.md` (the locked decisions this spec must follow)
-- `C:\master-repo\handoffs\plugin-architecture-clientside-research-2026-08-28-report.md` (the research this builds on)
-- `C:\master-repo\modules\app-semptify-fastapi\app\core\security.py` (current auth, session, and function-token patterns)
-- `C:\master-repo\modules\app-semptify-fastapi\app\core\user_context.py` (`UserContext`, `StoredSession`, permissions)
-- `C:\master-repo\modules\app-semptify-fastapi\app\core\cookie_auth.py` (HMAC-signed `semptify_uid` cookie)
-- `C:\master-repo\modules\app-semptify-fastapi\app\modules\storage\router.py` (provider token storage and refresh)
-- `C:\master-repo\modules\app-semptify-fastapi\app\core\features.py` (feature-flag conventions)
+- Master hand-offs for the locked plugin architecture decisions and the research report this builds on.
+- Semptify Core auth, session, function-token, feature-flag, and storage-router modules (for reference; this spec describes the PI-side contract, not Core implementation).
 
 ---
 
@@ -140,14 +134,14 @@ A new `get_current_plugin_user()` auth dependency is proposed. It would:
 4. Load the user's role and storage provider from the existing `User` / `Session` tables.
 5. Build a `UserContext` whose **effective permissions are the intersection of**:
    - the plugin token's `scopes`, and
-   - the user's role permissions (`app/core/user_context.py` `ROLE_PERMISSIONS`).
+   - the user's role permissions (mirroring the Semptify Core permission model).
 6. If the requested endpoint is not covered by the resulting permissions, return `403 Forbidden`.
 
 This enforces the "per-endpoint" and "never full tenant access" rules. A plugin token cannot do anything the tenant user themselves cannot do, and it is further restricted to the endpoints listed in its manifest.
 
 ### 3.5 Scope naming
 
-Scopes are endpoint-oriented. They map cleanly to the existing `FunctionGroupContract` and permission system. Example conventions:
+Scopes are endpoint-oriented. They map cleanly to the Semptify Core module and permission system. Example conventions:
 
 ```
 vault:read
@@ -410,18 +404,14 @@ Per-token rate limits are required because a misbehaving plugin runs on the user
 
 ## 8. Files and modules that would change (planning only)
 
-No edits are made now. If this spec is accepted, the likely touch points are:
+No edits are made now. If this spec is accepted, the likely touch points are on the Semptify Core side:
 
-- **New module:** `app/modules/plugin_gateway/` (or `app/modules/plugins/`) — router, registration, and service layer for plugin directory, connect, revoke, and capability endpoints.
-- **New module:** `app/core/plugin_auth.py` — token validation and scoped `UserContext` construction.
-- **New model:** `app/models/models.py` — `PluginToken` and `PluginManifest` tables.
-- **Existing model:** `app/models/models.py` — `Session` (no schema change; used to retrieve the provider token for capability URL generation).
-- **Existing files to reuse:**
-  - `app/core/security.py` — add plugin-token validation alongside existing `get_current_user()`.
-  - `app/core/user_context.py` — `UserContext` already carries role and permissions; add plugin-token scope intersection.
-  - `app/modules/storage/router.py` — existing provider access and refresh logic; would be called to generate direct provider URLs.
-  - `app/core/features.py` — add `Feature.PLUGIN_DIRECTORY` and `Feature.PLUGIN_API` defaulting to `False` until ready.
-- **Registration:** `app/core/product_manifest.py` (later, when implementing; not now). The `SEMPTIFY_SYSTEM_MANIFEST.md` rule says new modules are registered there, never directly in `main.py`.
+- New `plugin_gateway`/`plugins` module — router, registration, and service layer for plugin directory, connect, revoke, and capability endpoints.
+- New `plugin_auth` module — token validation and scoped `UserContext` construction.
+- New models for `PluginToken` and `PluginManifest`.
+- Existing `Session` model (no schema change) used to retrieve the provider token for capability URL generation.
+- Existing Core security, user-context, storage-router, and feature-flag modules would be extended for plugin-token validation and scoped provider URLs.
+- Product manifest registration, per Semptify's `SEMPTIFY_SYSTEM_MANIFEST.md` rule.
 
 ---
 
@@ -476,8 +466,5 @@ The mock Core, OpenAPI spec, and `local_script` reference plugin now reflect the
 
 ## 12. Related files and handoffs
 
-- `C:\master-repo\handoffs\plugin-architecture-tasklist-2026-08-28.md` — the locked decisions this spec follows.
-- `C:\master-repo\handoffs\plugin-architecture-clientside-research-2026-08-28-report.md` — the research report this builds on.
-- `C:\master-repo\modules\app-semptify-fastapi\app\core\security.py` — existing auth and function-token patterns.
-- `C:\master-repo\modules\app-semptify-fastapi\app\core\user_context.py` — `UserContext` and `StoredSession`.
-- `C:\master-repo\modules\app-semptify-fastapi\app\modules\storage\router.py` — provider token storage and refresh.
+- Master hand-offs for the locked plugin architecture decisions and the research report this builds on.
+- Semptify Core security, user-context, and storage-router modules (referenced for their existing auth, session, and provider-token patterns).
