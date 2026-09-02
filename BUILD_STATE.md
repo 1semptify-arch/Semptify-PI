@@ -22,7 +22,8 @@
 
 ### Notes
 
-- Track 2 is in progress. Brad should use the fresh Google consent URL below; the callback now maps `google` to `google_drive` and can complete.
+- Track 2 verified: Brad completed the live Google Drive consent flow. The callback returned `status: connected`, and `/api/v1/plugins/connected-providers` confirms a stored `ProviderToken` for `google_drive` with the correct `drive.file` scope and a one-hour access-token expiry.
+- Core is still running at `http://127.0.0.1:9000`.
 
 ---
 
