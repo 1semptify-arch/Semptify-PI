@@ -1,29 +1,31 @@
 # Semptify-PI Build State
 
-## Session — 2026-09-01 — Track 3 start: add OAuth refresh helper
+## Session — 2026-09-01 — Track 3: real provider capabilities
 
 ### Task
 
 - **Task ID:** `pi-phase-2-core-oauth-implementation-2026-09-01` (Track 3)
-- **Scope:** Begin real provider capability work by adding `OAuthManager.refresh_access_token` and shared `_token_request` helper.
+- **Scope:** Wire stored provider refresh tokens into real `download_capability` and `upload_capability` calls for all three providers.
 
 ### What changed
 
 - `core/oauth.py`: added `refresh_access_token()`; refactored `exchange_code` to use `_token_request` with typed JSON validation.
+- `core/capabilities.py`: fully rewritten as async. Downloads use real provider tokens: Google returns a `direct_request`; Dropbox calls `files/get_temporary_link`; OneDrive calls `drive/items/{id}`. Uploads use real tokens and create upload sessions; Google Drive auto-creates the vault folder path.
+- `core/main.py`: `download-url` and `upload-url` endpoints now `await` the capability helpers and pass `tenant_id`/`session`. Upload endpoint pre-validates vault containment.
+- `tests/test_core.py`: stubs `download_capability` and `upload_capability` in the `core_client` fixture so endpoint tests continue to exercise auth/containment without real provider calls.
 
 ### Verification
 
-- `py -3.11 -m py_compile core/oauth.py`: PASS
-- `py -3.11 -m pytest tests/test_core.py -q`: **10 passed**
-- `py -3.11 -m ruff check core/oauth.py`: PASS
-- `py -3.11 -m mypy core/oauth.py`: PASS
+- `py -3.11 -m pytest tests/ -q`: **25 passed**
+- `py -3.11 -m ruff check mock_core local_script core tests`: PASS
+- `py -3.11 -m mypy mock_core local_script core tests`: PASS
+- `python C:\master-repo\tools\check_repo_bleed.py`: PASS for both repos.
+- Live test: Core produced a real Google Drive resumable upload URL for `Semptify5.0/Inbox/pi-test-hello.pdf` using the stored refresh token and created the vault folder path in Brad's Drive.
 
 ### Notes
 
-- Track 3 is large. The refresh helper is the first building block. The remaining pieces are:
-  1. Real `download_capability` (read-only provider calls, no side effects).
-  2. Real `upload_capability` (needs design decision on Google Drive vault folder creation).
-- Core is still running at `http://127.0.0.1:9000`; the real Google Drive `ProviderToken` is stored.
+- Track 3 is complete for the real capability generation phase. Dropbox and OneDrive paths are implemented but not verified with live tokens yet.
+- Core was running at `http://127.0.0.1:9000` during the live test.
 
 ---
 

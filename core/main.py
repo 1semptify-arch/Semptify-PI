@@ -15,7 +15,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.capabilities import download_capability, is_contained, upload_capability
+from core.capabilities import (
+    download_capability,
+    is_contained,
+    make_vault_path,
+    upload_capability,
+)
 from core.config import CoreConfig
 from core.database import Database
 from core.models import Base, PluginManifest, ProviderToken, VaultFile
@@ -331,7 +336,10 @@ async def get_download_url(
     if not await state.tokens.can_access_file(session, token, file_id):
         raise HTTPException(status_code=403, detail="File not found for this tenant")
 
-    cap = download_capability(provider, file_id)
+    try:
+        cap = await download_capability(provider, file_id, token.tenant_id, session)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return DirectUrlResponse(
         download_url=cap.get("download_url"),
         direct_request=cap.get("direct_request"),
@@ -354,7 +362,16 @@ async def get_upload_url(
         raise HTTPException(status_code=403, detail="Scope required")
 
     try:
-        cap = upload_capability(provider, body.filename, body.parent_folder)
+        vault_path = make_vault_path(body.filename, body.parent_folder)
+        if not is_contained(vault_path):
+            raise HTTPException(status_code=400, detail="path escapes vault")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        cap = await upload_capability(
+            provider, body.filename, body.parent_folder, token.tenant_id, session
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return UploadUrlResponse(

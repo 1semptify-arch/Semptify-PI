@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -22,6 +23,29 @@ from core import main
 from core.database import Database
 
 
+async def _fake_download(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    return {
+        "direct_request": {
+            "endpoint": "https://example.com/download",
+            "method": "GET",
+            "headers": {"Authorization": "Bearer fake"},
+        },
+        "expires_at": "2026-01-01T00:00:00+00:00",
+    }
+
+
+async def _fake_upload(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    return {
+        "direct_request": {
+            "endpoint": "https://example.com/upload",
+            "method": "POST",
+            "headers": {"Authorization": "Bearer fake"},
+        },
+        "completion_token": "cpl_test",
+        "expires_at": "2026-01-01T00:00:00+00:00",
+    }
+
+
 @pytest.fixture
 def core_client(tmp_path: Path, monkeypatch) -> Generator[TestClient, None, None]:
     """Create a TestClient against the real Core with a fresh in-memory DB."""
@@ -32,6 +56,12 @@ def core_client(tmp_path: Path, monkeypatch) -> Generator[TestClient, None, None
 
     db = Database(db_url)
     main.state = main.CoreState(database=db)
+
+    # The core test fixture does not connect real cloud providers.
+    # Stub the capability helpers so endpoint tests exercise auth and
+    # containment without needing real provider tokens.
+    monkeypatch.setattr(main, "download_capability", _fake_download)
+    monkeypatch.setattr(main, "upload_capability", _fake_upload)
 
     with TestClient(main.app) as client:
         yield client
