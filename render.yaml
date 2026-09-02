@@ -1,0 +1,32 @@
+# Render Infrastructure as Code for Semptify-PI
+# This service runs on Render's free tier and is separate from Semptify Core.
+services:
+  - type: web
+    name: semptify-pi
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -e .
+    startCommand: uvicorn core.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SEMPIFY_PI_PLUGIN_TOKEN_DAYS
+        value: 90
+      - key: SEMPIFY_PI_PROVIDER_TOKEN_MINUTES
+        value: 30
+      - key: SEMPIFY_PI_VAULT_FOLDER
+        value: /Semptify5.0/Inbox
+      # The following must be set in the Render Dashboard (Settings > Environment):
+      # - DATABASE_URL
+      # - SEMPIFY_PI_ENCRYPTION_KEY
+      # - SEMPIFY_PI_GOOGLE_CLIENT_ID
+      # - SEMPIFY_PI_GOOGLE_CLIENT_SECRET
+      # - SEMPIFY_PI_GOOGLE_REDIRECT_URI
+      # - SEMPIFY_PI_DROPBOX_CLIENT_ID
+      # - SEMPIFY_PI_DROPBOX_CLIENT_SECRET
+      # - SEMPIFY_PI_DROPBOX_REDIRECT_URI
+      # - SEMPIFY_PI_ONEDRIVE_CLIENT_ID
+      # - SEMPIFY_PI_ONEDRIVE_CLIENT_SECRET
+      # - SEMPIFY_PI_ONEDRIVE_REDIRECT_URI

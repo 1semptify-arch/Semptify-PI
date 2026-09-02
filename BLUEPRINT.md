@@ -117,10 +117,12 @@ review of the real OAuth/token implementation.
 
 ### Phase 5 — Render deployment
 
-- Provision a new Render service for the real Core.
-- Provision production Postgres on Render (separate from local
-  `semptify_pi`).
-- Wire Phase 3 credentials as Render env vars.
+- Provision a new **free** Render web service for the real Core (`septify-pi`).
+- Use the existing `render.yaml` IaC; keep the **Free** instance type.
+- Cloudflare DNS: add `plugins.semptify.org` as a CNAME to the Render
+  `onrender.com` subdomain.
+- Render issues and renews the TLS certificate automatically.
+- Wire Phase 3 credentials and `DATABASE_URL` as Render env vars.
 - Deploy and run smoke tests against the live Render URL.
 
 ### Phase 6 — Go-live verification

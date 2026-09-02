@@ -1,5 +1,38 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-02 — Prepare free-tier Render deployment
+
+### Task
+
+- **Task ID:** `septify-pi-render-hosting-setup-2026-08-29`
+- **Scope:** Brad chose free-tier hosting. Prepare `render.yaml`, `/health` endpoint, deployment docs, and free-tier cost guardrail before any Render service or DNS is created.
+
+### What changed
+
+- `render.yaml` — Render Infrastructure as Code for a free web service (`septify-pi`), Python 3.11.9, build/start commands, and a list of required env vars to be set in the Render Dashboard.
+- `core/main.py` — added `GET /health` endpoint for Render health checks.
+- `BUILD_GUIDE.md` — added free-tier Render deployment steps, environment-variable checklist, and cost guardrail.
+- `BLUEPRINT.md` — Phase 5 updated to free-tier Render + Cloudflare DNS.
+
+### Verification
+
+- `py -3.11 -m py_compile core/main.py`: PASS
+- `py -3.11 -m pytest tests/ -q`: **25 passed**
+- `py -3.11 -m ruff check mock_core local_script core tests`: PASS
+- `py -3.11 -m mypy mock_core local_script core tests`: PASS
+
+### Notes
+
+- No real users yet, so free-tier spin-down/cold start is acceptable.
+- Cloudflare is used for DNS; proposed subdomain `plugins.semptify.org`.
+- Service creation and DNS changes are **not done yet**; next step is Brad's final OK.
+
+### Next step
+
+- Confirm the exact service name (`septify-pi`) and subdomain (`plugins.semptify.org`), then create the Render service and Cloudflare CNAME.
+
+---
+
 ## Session — 2026-09-01 — Track 3: real provider capabilities
 
 ### Task

@@ -61,3 +61,33 @@ literal-string bleed.
 
 - This repo is decoupled from Semptify Core. It has its own `DATABASE_URL` and does not share Core's database.
 - The local Postgres `semptify_pi` database is for agent scratch work and testing only.
+
+## Render deployment (free tier)
+
+1. Push the repo to GitHub (`1semptify-arch/Semptify-PI`).
+2. In the Render Dashboard, create a new **Web Service** and select this repo.
+3. Choose the **Free** instance type (512 MB RAM, 0.1 CPU).
+4. Render will read `render.yaml`; confirm:
+   - **Build command:** `pip install -e .`
+   - **Start command:** `uvicorn core.main:app --host 0.0.0.0 --port $PORT`
+   - **Health check path:** `/health`
+5. Set the secret environment variables in the Render Dashboard:
+   - `DATABASE_URL` — the deployed Postgres URL (Render Postgres free tier, or your own).
+   - `SEMPIFY_PI_ENCRYPTION_KEY` — the Fernet key.
+   - Google, Dropbox, and OneDrive client ID/secret and redirect URIs.
+6. Add your custom domain (`plugins.semptify.org`) under the service's **Custom Domains**.
+7. In Cloudflare, add a `CNAME` record from `plugins` to the Render `onrender.com` subdomain.
+8. Wait for Render to issue the TLS certificate and verify the domain.
+
+### Free-tier limits
+
+- 750 free instance hours per month across the workspace.
+- The service spins down after 15 minutes without traffic and takes ~1 minute to cold-start.
+- No persistent disk, no SSH, no edge caching.
+- Render may restart the service at any time.
+
+### Cost guardrail
+
+- Do **not** upgrade to Starter unless you explicitly decide to.
+- Do **not** add a payment method to the workspace if the goal is to stay strictly free.
+- Monitor the Render Dashboard **Usage** page for instance-hour consumption.

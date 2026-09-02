@@ -71,6 +71,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.get("/health")
+async def health_check() -> dict:
+    """Render health check."""
+    return {"status": "ok", "service": "septify-pi"}
+
+
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
