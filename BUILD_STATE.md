@@ -1,5 +1,35 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-02 — Inventory and triage Core modules for PI plugin conversion
+
+### Task
+
+- **Task ID:** `inventory-triage-core-modules-for-pi-2026-09-02`
+- **Scope:** Planning track, runs parallel to Track 2. Inventory Semptify Core's product manifest, triage each module for PI plugin conversion, and draft blueprints for plugin-suitable modules.
+
+### What changed
+
+- `docs/core_module_triage.md` — full inventory of 112 Core module packages, triage table, summary counts, unclear list, and draft blueprints for 9 plugin-suitable modules.
+- `docs/plugin_blueprint_template.md` — used as the blueprint template for all draft blueprints.
+
+### Triage summary
+
+- Plugin-suitable: 9
+- Core-only: 89
+- Unclear: 20
+
+### Verification
+
+- Inventory sourced directly from `app/core/product_manifest.py` in Semptify Core.
+- Repository bleed check: PASS (no Core code in PI, no PI content in Core).
+
+### Notes
+
+- No plugin code implementation. All blueprints are `status: draft`.
+- The 20 `Unclear` modules are flagged for Brad's judgment.
+
+---
+
 ## Session — 2026-09-02 — Prepare free-tier Render deployment
 
 ### Task
