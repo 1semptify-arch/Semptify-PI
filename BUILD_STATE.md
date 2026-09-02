@@ -1,5 +1,31 @@
 # Semptify-PI Build State
 
+## Session — 2026-09-01 — Track 2 attempt: fix Google OAuth callback provider alias
+
+### Task
+
+- **Task ID:** `pi-phase-2-core-oauth-implementation-2026-09-01` (Track 2)
+- **Scope:** Brad attempted a real Google Drive consent flow; the configured redirect URI uses `/auth/google/callback` but the Core endpoint only accepted `google_drive`. Fix the provider alias and restart the Core.
+
+### What changed
+
+- `core/main.py`: added `_PROVIDER_ALIASES` mapping `google` → `google_drive`, normalizing the path before `_validate_provider` in both `/auth/{provider}/start` and `/auth/{provider}/callback`.
+- `tests/test_core.py`: added `test_oauth_google_alias_matches_redirect_uri` to lock in the correct redirect URI for the `google` path.
+- Core restarted on port 9000 with `--env-file .env`.
+
+### Verification
+
+- `py -3.11 -m pytest tests/ -q`: **25 passed**
+- `ruff check mock_core local_script core tests`: PASS
+- `mypy mock_core local_script core tests`: PASS
+- Live `/auth/google/start` call returns a valid Google consent URL with `redirect_uri=http://127.0.0.1:9000/auth/google/callback`.
+
+### Notes
+
+- Track 2 is in progress. Brad should use the fresh Google consent URL below; the callback now maps `google` to `google_drive` and can complete.
+
+---
+
 ## Session — 2026-09-01 — Track 1B: plugin blueprint template, backfills, and PluginRegistry check
 
 ### Task

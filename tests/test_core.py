@@ -278,6 +278,17 @@ def test_oauth_callback_stores_encrypted_provider_token(
     assert "refresh_token_encrypted" not in data["providers"][0]
 
 
+def test_oauth_google_alias_matches_redirect_uri(core_client: TestClient):
+    res = core_client.get(
+        "/auth/google/start",
+        headers={"Authorization": f"Bearer {SESSION}"},
+    )
+    assert res.status_code == 200
+    url = res.json()["authorization_url"]
+    from urllib.parse import unquote
+    assert "/auth/google/callback" in unquote(url)
+
+
 def test_oauth_callback_rejects_invalid_state(core_client: TestClient, monkeypatch):
     monkeypatch.setattr(main.oauth, "exchange_code", _fake_token_exchange)
     res = core_client.get(

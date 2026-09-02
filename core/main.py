@@ -455,6 +455,17 @@ def _provider_token_to_view(t: ProviderToken) -> ProviderTokenView:
 # ------------------------------------------------------------------
 
 
+_PROVIDER_ALIASES = {
+    # The configured Google redirect URI uses /auth/google/callback, while the
+    # internal provider key is "google_drive". Map the public name to the key.
+    "google": "google_drive",
+}
+
+
+def _normalize_provider(provider: str) -> str:
+    return _PROVIDER_ALIASES.get(provider, provider)
+
+
 def _validate_provider(provider: str) -> None:
     if provider not in {"google_drive", "dropbox", "onedrive"}:
         raise HTTPException(status_code=400, detail="unsupported provider")
@@ -466,6 +477,7 @@ async def start_provider_oauth(
     user_id: str = Depends(require_session),
 ):
     """Return the provider consent URL for the logged-in tenant."""
+    provider = _normalize_provider(provider)
     _validate_provider(provider)
     scopes = oauth.provider_scopes(provider)
     state = oauth.crypto.create_state(user_id, provider, scopes=scopes)
@@ -482,6 +494,7 @@ async def oauth_callback(
     session: AsyncSession = Depends(get_session),
 ):
     """Handle the provider redirect after tenant consent."""
+    provider = _normalize_provider(provider)
     _validate_provider(provider)
 
     if error:
