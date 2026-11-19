@@ -1,0 +1,48 @@
+{
+  "captured": "2026-11-19",
+  "captured_by": "devin",
+  "note": "Render service definition snapshot — enough to recreate 'septify-pi' identically if it is ever deleted or must be rebuilt. Env var VALUES are not included (Render never returns them); see BUILD_GUIDE.md for the checklist of what to re-set. DO NOT DELETE this service — it is the next-version (plugin) Semptify host.",
+  "service": {
+    "id": "srv-daboihgjo6nc738doevg",
+    "name": "septify-pi",
+    "type": "web_service",
+    "plan": "free",
+    "region": "ohio",
+    "repo": "https://github.com/1semptify-arch/Semptify-PI",
+    "branch": "main",
+    "rootDir": "",
+    "runtime": "python",
+    "buildCommand": "pip install -e .",
+    "startCommand": "uvicorn core.main:app --host 0.0.0.0 --port $PORT",
+    "url": "https://septify-pi.onrender.com",
+    "dashboardUrl": "https://dashboard.render.com/web/srv-daboihgjo6nc738doevg",
+    "autoDeploy": "no",
+    "createdAt": "2026-09-02T02:26:16Z",
+    "status_note": "Every deploy since creation is update_failed — service has never served. Keeping it costs nothing: a never-deployed free service consumes no instance hours."
+  },
+  "env_vars_in_yaml": {
+    "PYTHON_VERSION": "3.11.9",
+    "SEMPIFY_PI_PLUGIN_TOKEN_DAYS": "90",
+    "SEMPIFY_PI_PROVIDER_TOKEN_MINUTES": "30",
+    "SEMPIFY_PI_VAULT_FOLDER": "/Semptify5.0/Inbox"
+  },
+  "env_vars_dashboard_only": [
+    "DATABASE_URL (Neon: postgresql+asyncpg://<role>:<pass>@<host>/septify_pi?ssl=require — db 'septify_pi' confirmed present in Neon project 'semptify' flat-block-24520481, 2026-11-19)",
+    "SEMPIFY_PI_ENCRYPTION_KEY (Fernet key — if it was ever set it exists only in the dashboard; app never deployed, so nothing was ever encrypted with it — regenerate freely)",
+    "SEMPIFY_PI_GOOGLE_CLIENT_ID / SECRET / REDIRECT_URI",
+    "SEMPIFY_PI_DROPBOX_CLIENT_ID / SECRET / REDIRECT_URI",
+    "SEMPIFY_PI_ONEDRIVE_CLIENT_ID / SECRET / REDIRECT_URI"
+  ],
+  "database": {
+    "provider": "Neon",
+    "project": "semptify (flat-block-24520481, aws-us-east-1, pg16)",
+    "database": "septify_pi",
+    "note": "Render free Postgres 'septify-pi-db' had a 30-day expiry and is gone; the plan moved to Neon on 2026-09-02 (commit 00e718e)."
+  },
+  "revival_steps": [
+    "Fix whatever made the 2026-09-02/05 deploys update_failed (check deploy logs in dashboard or rerun a manual deploy).",
+    "Set env vars in dashboard per env_vars_dashboard_only.",
+    "healthCheckPath /health exists in code (core/main.py) — set it in service settings (render.yaml has it; dashboard service config did not).",
+    "Optional custom domain: plugins.semptify.org CNAME -> septify-pi.onrender.com."
+  ]
+}
